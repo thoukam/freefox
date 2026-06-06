@@ -227,6 +227,36 @@ Ouvrir:
 http://127.0.0.1:8765
 ```
 
+### Acces depuis un autre PC du reseau
+
+Par defaut, le dashboard ecoute seulement sur `127.0.0.1`: il est donc accessible uniquement depuis la machine qui le lance.
+
+Pour l'ouvrir depuis un PC client avec l'IP du robot, lancez le dashboard sur `0.0.0.0`:
+
+```bash
+.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 0.0.0.0 --port 8765
+```
+
+Trouver l'IP du robot:
+
+```bash
+hostname -I
+```
+
+Puis ouvrir depuis le PC client:
+
+```text
+http://IP_DU_ROBOT:8765
+```
+
+Exemple:
+
+```text
+http://192.168.1.42:8765
+```
+
+Important: le dashboard n'a pas encore d'authentification. Il faut l'exposer uniquement sur un reseau de confiance, pas sur Internet.
+
 Le dashboard affiche:
 
 - statut des transferts

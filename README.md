@@ -60,6 +60,24 @@ Puis ouvrir:
 http://127.0.0.1:8765
 ```
 
+Pour ouvrir le dashboard depuis un autre PC du meme reseau, lancez-le sur l'adresse reseau du robot:
+
+```bash
+.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 0.0.0.0 --port 8765
+```
+
+Puis, depuis le PC client:
+
+```text
+http://IP_DU_ROBOT:8765
+```
+
+Exemple:
+
+```text
+http://192.168.1.42:8765
+```
+
 ## Installation systemd
 
 ```bash
