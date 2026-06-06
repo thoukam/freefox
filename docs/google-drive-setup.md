@@ -107,7 +107,7 @@ upload:
   delete_after_upload: false
 
 drive:
-  credentials_file: /home/yves/freefox/secrets/freefox-oauth-client.json
+  credentials_file: ./secrets/freefox-oauth-client.json
   target_folder_id: "ID_DU_DOSSIER_GOOGLE_DRIVE"
   use_date_subfolder: true
 
@@ -120,7 +120,7 @@ Remplacer `ID_DU_DOSSIER_GOOGLE_DRIVE` par l'ID copie depuis Google Drive.
 ### 6. Lancer le smoke test Google Drive
 
 ```bash
-FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json \
+FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
 .venv/bin/python scripts/gdrive_smoke.py --config config/local.gdrive.yaml
 ```
 

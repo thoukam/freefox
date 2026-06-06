@@ -114,7 +114,7 @@ upload:
   delete_after_upload: false
 
 drive:
-  credentials_file: /home/yves/freefox/secrets/freefox-oauth-client.json
+  credentials_file: ./secrets/freefox-oauth-client.json
   target_folder_id: "ID_DU_DOSSIER_GOOGLE_DRIVE"
   use_date_subfolder: true
 
@@ -125,7 +125,7 @@ log_level: INFO
 Lancer le smoke test Google Drive:
 
 ```bash
-FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json \
+FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
 .venv/bin/python scripts/gdrive_smoke.py --config config/local.gdrive.yaml
 ```
 
@@ -153,7 +153,7 @@ queue_db: /var/lib/freefox/queue.db
 Lancer le watcher reel:
 
 ```bash
-FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json \
+FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
 .venv/bin/python scripts/watch_gdrive.py --config config/local.gdrive.yaml
 ```
 
@@ -287,7 +287,7 @@ Exemple:
 
 ```bash
 FREEFOX_ROBOT_ID=pc-test \
-FREEFOX_CREDENTIALS=/home/yves/freefox/secrets/freefox-oauth-client.json \
-FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json \
+FREEFOX_CREDENTIALS=./secrets/freefox-oauth-client.json \
+FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
 .venv/bin/freefox --config config/local.gdrive.yaml
 ```
