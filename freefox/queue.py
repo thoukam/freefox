@@ -384,6 +384,35 @@ class UploadQueue:
                 )
             conn.commit()
 
+    def defer(
+        self,
+        entry_id: int,
+        error: str,
+        retry_after_seconds: float,
+    ) -> None:
+        """Keep an entry queued, but postpone its next retry without failing it."""
+        conn = self._conn()
+        with self._lock:
+            conn.execute(
+                """
+                UPDATE queue
+                SET status=?,
+                    next_retry_at=?,
+                    updated_at=?,
+                    upload_finished_at=0,
+                    error=?
+                WHERE id=?
+                """,
+                (
+                    Status.QUEUED,
+                    time.time() + max(0.0, retry_after_seconds),
+                    time.time(),
+                    error,
+                    entry_id,
+                ),
+            )
+            conn.commit()
+
     def stats(self) -> dict[str, int]:
         rows = self._conn().execute(
             "SELECT status, COUNT(*) AS n FROM queue GROUP BY status"

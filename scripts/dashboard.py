@@ -473,6 +473,20 @@ def _incidents(config, entries):
     if not config.drive.credentials_file.exists():
         out.append({"kind": "identifiants", "message": f"Fichier manquant: {config.drive.credentials_file}"})
     for e in entries:
+        error = e.error or ""
+        if e.status.value != "done" and (
+            "Quota Google Drive depasse" in error
+            or "storageQuotaExceeded" in error
+            or "storage quota" in error.lower()
+        ):
+            out.append({
+                "kind": "quota Google Drive",
+                "message": (
+                    "L'espace Drive du compte est plein. "
+                    "FreeFox reessaiera automatiquement quand de l'espace sera disponible."
+                ),
+            })
+            continue
         if e.status.value == "failed":
             out.append({"kind": f"transfert en echec #{e.id}", "message": e.error or e.remote_path})
     unq = [f for f in _list_watch_files(config, entries) if f["state"] == "not queued"]

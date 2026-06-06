@@ -17,6 +17,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _is_storage_quota_error(error_msg: str) -> bool:
+    lowered = error_msg.lower()
+    return (
+        "storagequotaexceeded" in lowered
+        or "drive storage quota has been exceeded" in lowered
+        or "storage quota" in lowered
+    )
+
+
 class UploadWorkerPool:
     """Fixed pool of threads that drain the upload queue."""
 
@@ -111,6 +120,22 @@ class UploadWorkerPool:
 
             except Exception as exc:
                 error_msg = str(exc)
+                if _is_storage_quota_error(error_msg):
+                    retry_delay = self._config.quota_retry_delay
+                    logger.warning(
+                        "[worker %d] quota Google Drive depasse pour %s; "
+                        "nouvel essai dans %.0f min",
+                        worker_id,
+                        local.name,
+                        retry_delay / 60,
+                    )
+                    self._queue.defer(
+                        entry.id,
+                        "Quota Google Drive depasse. FreeFox reessaiera automatiquement.",
+                        retry_after_seconds=retry_delay,
+                    )
+                    continue
+
                 logger.warning(
                     "[worker %d] upload failed (%s): %s — retry %d/%d",
                     worker_id,

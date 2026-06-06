@@ -41,6 +41,7 @@ upload:
   max_retries: 10
   retry_backoff_base: 2.0    # seconds
   retry_backoff_max: 300.0   # 5 min
+  quota_retry_delay: 60.0    # retry quota toutes les 60s
 
   # Passer a true pour supprimer le bag local apres upload confirme.
   delete_after_upload: false
@@ -48,13 +49,13 @@ upload:
 drive:
   # Chemin vers credentials.json, OAuth2 ou compte de service.
   # Peut etre surcharge avec FREEFOX_CREDENTIALS.
-  credentials_file: /home/yves/freefox/secrets/client_secret_23814393551-qa7cmg3vg29u97ecm8bfjiaohs3kbu17.apps.googleusercontent.com.json
+  credentials_file: /etc/freefox/credentials.json
 
   # ID du dossier Google Drive cible.
   # Il est visible dans l'URL d'un dossier:
   # drive.google.com/drive/folders/<ID>
   # Laisser vide pour envoyer a la racine de My Drive.
-  target_folder_id: "1UicTcjyr-cYP4lU_dAwAWgYTjdLJXSbS"
+  target_folder_id: "ID_DU_DOSSIER_GOOGLE_DRIVE"
 
   # Organise les fichiers sous <robot_id>/<YYYY-MM-DD>/<filename>
   # dans le dossier cible.
