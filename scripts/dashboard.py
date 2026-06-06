@@ -299,6 +299,11 @@ const fmtB = v => { if(!v) return "0 B"; const u=["B","KiB","MiB","GiB","TiB"]; 
 const fmtT = v => v ? new Date(v*1000).toLocaleString() : "—";
 const fmtD = s => { if(!s||s<0)return"—"; s=Math.round(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),r=s%60; return h?`${h}h ${m}m`:m?`${m}m ${r}s`:`${r}s`; };
 const fmtR = b => (!b||b<0)?"—":`${(b/1024/1024).toFixed(2)} MiB/s`;
+const fmtNext = e => {
+  if(e.status !== "queued") return "—";
+  if(!e.retry_after_seconds || e.retry_after_seconds <= 0) return "pret";
+  return `dans ${fmtD(e.retry_after_seconds)}`;
+};
 const statut = s => ({
   queued: "en file",
   uploading: "upload",
@@ -310,9 +315,11 @@ const statut = s => ({
   "not-queued": "non ajoute"
 }[s] || s);
 
-function renderStats(st, mt) {
+function renderStats(st, mt, q) {
   const cards = [
     {l:"En file",   v:st.queued||0,    c:""},
+    {l:"Prets",     v:(q&&q.ready)||0, c:"c-blue"},
+    {l:"Retry",     v:(q&&q.waiting)||0, c:"c-amber"},
     {l:"En upload", v:st.uploading||0, c:"c-orange"},
     {l:"Termines",  v:st.done||0,      c:"c-green"},
     {l:"Echecs",    v:st.failed||0,    c:"c-red"},
@@ -329,7 +336,7 @@ function renderTransfers(es) {
     <th style="width:48px">ID</th><th style="width:110px">Statut</th>
     <th style="width:170px">Progression</th><th>Chemin distant</th>
     <th style="width:88px">Taille</th><th style="width:130px">Debit</th>
-    <th style="width:76px">Reste</th><th style="width:60px">Essais</th>
+    <th style="width:76px">Reste</th><th style="width:92px">Prochain</th><th style="width:60px">Essais</th>
   </tr></thead><tbody>${es.map(e=>{
     const pct = Math.max(0,Math.min(100,e.progress_percent||0));
     return `<tr>
@@ -340,8 +347,9 @@ function renderTransfers(es) {
       <td class="dim">${fmtB(e.size_bytes)}</td>
       <td class="dim">${fmtR(e.bytes_per_second)}</td>
       <td class="dim">${fmtD(e.eta_seconds)}</td>
+      <td class="dim">${esc(fmtNext(e))}</td>
       <td class="dim">${e.retries}</td>
-    </tr>${e.error?`<tr class="err-row"><td></td><td colspan="7">⚠ ${esc(e.error)}</td></tr>`:""}`;
+    </tr>${e.error_summary?`<tr class="err-row"><td></td><td colspan="8">⚠ ${esc(e.error_summary)}</td></tr>`:""}`;
   }).join("")}</tbody></table>`;
 }
 
@@ -385,7 +393,7 @@ async function refresh() {
     $("m-robot").textContent   = d.config.robot_id;
     $("m-watch").textContent   = d.config.watch_directory;
     $("m-updated").textContent = new Date().toLocaleTimeString();
-    renderStats(d.stats, d.metrics);
+    renderStats(d.stats, d.metrics, d.queued);
     renderTransfers(d.entries);
     renderFiles(d.files);
     renderIncidents(d.incidents);
@@ -412,6 +420,35 @@ refresh(); schedule();
 """
 
 
+def _human_error(error: str | None) -> str:
+    if not error:
+        return ""
+    lowered = error.lower()
+    if (
+        "quota google drive depasse" in lowered
+        or "storagequotaexceeded" in lowered
+        or "storage quota" in lowered
+    ):
+        return "L'espace Google Drive du compte est plein."
+    if (
+        "erreur reseau temporaire" in lowered
+        or "temporary failure in name resolution" in lowered
+        or "nameresolutionerror" in lowered
+        or "failed to resolve" in lowered
+        or "read timed out" in lowered
+        or "connection timed out" in lowered
+        or "max retries exceeded" in lowered
+    ):
+        return "Connexion instable vers Google Drive. FreeFox reessaiera automatiquement."
+    if "local file missing" in lowered or "file not found" in lowered:
+        return "Le fichier local est introuvable ou a ete deplace."
+    if "resumable upload session expired" in lowered:
+        return "La session d'upload Google Drive a expire. FreeFox va recreer une session."
+    if "permission" in lowered or "403" in lowered:
+        return "Google Drive refuse l'operation. Verifiez les droits du compte ou du dossier."
+    return "Erreur d'upload. Consultez les logs FreeFox pour le detail technique."
+
+
 def _entry_to_dict(entry: QueueEntry) -> dict:
     now = time.time()
     progress = max(0.0, min(100.0, entry.progress_percent or 0.0))
@@ -425,14 +462,18 @@ def _entry_to_dict(entry: QueueEntry) -> dict:
     bps = (entry.size_bytes / duration if entry.status.value == "done" else bytes_sent / duration) if started_at and duration > 0 else 0.0
     remaining = max(0, entry.size_bytes - bytes_sent)
     eta = remaining / bps if entry.status.value == "uploading" and bps > 0 else 0.0
+    retry_after = max(0.0, entry.next_retry_at - now) if entry.status.value == "queued" else 0.0
     return {
         "id": entry.id, "local_path": entry.local_path, "remote_path": entry.remote_path,
         "status": entry.status.value, "retries": entry.retries,
+        "next_retry_at": entry.next_retry_at, "retry_after_seconds": retry_after,
         "created_at": entry.created_at, "updated_at": getattr(entry, "updated_at", entry.created_at),
         "upload_started_at": entry.upload_started_at, "upload_finished_at": entry.upload_finished_at,
         "size_bytes": entry.size_bytes, "progress_percent": progress,
         "bytes_sent_estimate": bytes_sent, "bytes_per_second": bps,
-        "duration_seconds": duration, "eta_seconds": eta, "error": entry.error,
+        "duration_seconds": duration, "eta_seconds": eta,
+        "error": entry.error,
+        "error_summary": _human_error(entry.error),
     }
 
 
@@ -487,8 +528,23 @@ def _incidents(config, entries):
                 ),
             })
             continue
+        if e.status.value != "done" and (
+            "Erreur reseau temporaire" in error
+            or "temporary failure in name resolution" in error.lower()
+            or "read timed out" in error.lower()
+            or "connection timed out" in error.lower()
+            or "failed to resolve" in error.lower()
+        ):
+            out.append({
+                "kind": "reseau temporaire",
+                "message": (
+                    "La connexion vers Google Drive est instable. "
+                    "FreeFox reessaiera automatiquement."
+                ),
+            })
+            continue
         if e.status.value == "failed":
-            out.append({"kind": f"transfert en echec #{e.id}", "message": e.error or e.remote_path})
+            out.append({"kind": f"transfert en echec #{e.id}", "message": _human_error(e.error) or e.remote_path})
     unq = [f for f in _list_watch_files(config, entries) if f["state"] == "not queued"]
     if unq:
         out.append({"kind": "surveillance", "message": f"{len(unq)} bag(s) stable(s) non ajoute(s) a la file. Le service tourne-t-il ?"})
@@ -536,6 +592,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     "extensions": cfg.watch.extensions, "stable_seconds": cfg.watch.stable_seconds,
                 },
                 "stats": self.server.queue.stats(),
+                "queued": self.server.queue.queued_breakdown(),
                 "metrics": _metrics(entries),
                 "entries": [_entry_to_dict(e) for e in entries],
                 "files": _list_watch_files(cfg, entries),

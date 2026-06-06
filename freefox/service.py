@@ -80,6 +80,13 @@ class CollectorService:
             self._config.robot_id,
             self._config.watch.directory,
         )
+        if self._config.upload.retry_failed_on_start:
+            restored = self._queue.requeue_failed()
+            if restored:
+                logger.info(
+                    "%d transfert(s) en echec remis en file au demarrage",
+                    restored,
+                )
 
         # Graceful shutdown on SIGTERM / SIGINT
         def _shutdown(signum, _frame):
@@ -99,7 +106,13 @@ class CollectorService:
             while self._running:
                 time.sleep(30)
                 stats = self._queue.stats()
-                logger.info("Queue stats: %s", stats)
+                queued = self._queue.queued_breakdown()
+                logger.info(
+                    "Queue stats: %s (queued ready=%d, retry_wait=%d)",
+                    stats,
+                    queued["ready"],
+                    queued["waiting"],
+                )
         except SystemExit:
             pass
 

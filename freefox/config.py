@@ -34,6 +34,10 @@ class UploadConfig:
     retry_backoff_max: float = 300.0  # 5 min cap
     # Delay before retrying quota-related provider errors.
     quota_retry_delay: float = 60.0
+    # Delay before retrying transient network errors.
+    transient_retry_delay: float = 60.0
+    # Retry failed queue entries automatically when the service starts.
+    retry_failed_on_start: bool = True
     # Delete local file after successful upload
     delete_after_upload: bool = False
 
@@ -91,6 +95,8 @@ class CollectorConfig:
             retry_backoff_base=float(upload_raw.get("retry_backoff_base", 2.0)),
             retry_backoff_max=float(upload_raw.get("retry_backoff_max", 300.0)),
             quota_retry_delay=float(upload_raw.get("quota_retry_delay", 60.0)),
+            transient_retry_delay=float(upload_raw.get("transient_retry_delay", 60.0)),
+            retry_failed_on_start=bool(upload_raw.get("retry_failed_on_start", True)),
             delete_after_upload=bool(upload_raw.get("delete_after_upload", False)),
         )
 

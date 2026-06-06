@@ -42,6 +42,8 @@ upload:
   retry_backoff_base: 2.0    # seconds
   retry_backoff_max: 300.0   # 5 min
   quota_retry_delay: 60.0    # retry quota toutes les 60s
+  transient_retry_delay: 60.0 # retry reseau toutes les 60s
+  retry_failed_on_start: true # remet les echecs en file au demarrage
 
   # Passer a true pour supprimer le bag local apres upload confirme.
   delete_after_upload: false
