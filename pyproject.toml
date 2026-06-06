@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "freefox"
+version = "0.1.0"
+description = "Service libre d'upload automatique de rosbags ROS 2 vers Google Drive"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+
+keywords = ["ros2", "rosbag", "robotics", "google-drive", "upload"]
+
+authors = [
+  { name = "YVES THOUKAM", email = "thoukamy@gmail.com" },
+]
+
+maintainers = [
+  { name = "YVES THOUKAM", email = "thoukamy@gmail.com" },
+]
+
+dependencies = [
+    "pyyaml>=6.0",
+    "google-api-python-client>=2.100",
+    "google-auth>=2.20",
+    "google-auth-oauthlib>=1.1",
+    "google-auth-httplib2>=0.2",
+    "watchdog>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-timeout>=2.1",
+]
+s3 = [
+    "boto3>=1.28",
+]
+
+[project.scripts]
+freefox = "freefox.service:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["freefox*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 30

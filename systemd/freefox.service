@@ -1,0 +1,42 @@
+[Unit]
+Description=FreeFox - service d'upload automatique de bags ROS 2
+Documentation=https://github.com/thoukam/freefox
+After=network-online.target
+Wants=network-online.target
+# Si ROS 2 tourne comme service systeme, decommenter:
+# After=ros2.service
+
+[Service]
+Type=simple
+User=yves
+Group=yves
+
+ExecStart=/usr/local/bin/freefox --config /home/yves/freefox/config/local.gdrive.yaml
+
+# Redemarre en cas d'erreur, avec 5s d'attente
+Restart=always
+RestartSec=5s
+
+# Laisse jusqu'a 30s pour terminer proprement avant SIGKILL
+TimeoutStopSec=30
+
+# Les logs vont dans journald: journalctl -u freefox -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=freefox
+
+# Durcissement securite, optionnel mais recommande
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/freefox /home/yves/ros2_ws/recordings
+ReadOnlyPaths=/home/yves/freefox/config /home/yves/freefox/secrets
+ProtectHome=read-only
+
+# Surcharges par variables d'environnement
+# Environment=FREEFOX_ROBOT_ID=robot-01
+# Environment=FREEFOX_CREDENTIALS=/home/yves/freefox/secrets/client_secret_23814393551-qa7cmg3vg29u97ecm8bfjiaohs3kbu17.apps.googleusercontent.com.json
+Environment=FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json
+
+[Install]
+WantedBy=multi-user.target
