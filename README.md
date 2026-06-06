@@ -10,6 +10,14 @@ FreeFox est un petit service Linux qui surveille un dossier, detecte les rosbags
 
 L'objectif est simple: donner a une equipe robotique un outil de collecte de donnees fiable, local, lisible, et sans abonnement.
 
+<p align="center">
+  <img src="images/dashboard_freefox_blur.png" alt="Apercu floute du dashboard FreeFox" width="860">
+</p>
+
+<p align="center">
+  <em>Un apercu volontairement floute du dashboard local.</em>
+</p>
+
 ```text
 Robot -> ros2 bag record -> /bags/ -> FreeFox -> Google Drive
 ```
