@@ -413,11 +413,53 @@ class UploadQueue:
             )
             conn.commit()
 
+    def requeue_failed(self, reset_retries: bool = True) -> int:
+        """Move failed entries back to the front of the upload queue."""
+        conn = self._conn()
+        with self._lock:
+            cur = conn.execute(
+                """
+                UPDATE queue
+                SET status=?,
+                    retries=CASE WHEN ? THEN 0 ELSE retries END,
+                    next_retry_at=0,
+                    progress_percent=0,
+                    uploaded_bytes=0,
+                    updated_at=?,
+                    upload_started_at=0,
+                    upload_finished_at=0,
+                    upload_session_uri='',
+                    error=NULL
+                WHERE status=?
+                """,
+                (Status.QUEUED, reset_retries, time.time(), Status.FAILED),
+            )
+            conn.commit()
+            return cur.rowcount
+
     def stats(self) -> dict[str, int]:
         rows = self._conn().execute(
             "SELECT status, COUNT(*) AS n FROM queue GROUP BY status"
         ).fetchall()
         return {r["status"]: r["n"] for r in rows}
+
+    def queued_breakdown(self) -> dict[str, int]:
+        """Return how many queued entries are ready now vs waiting for retry."""
+        now = time.time()
+        row = self._conn().execute(
+            """
+            SELECT
+                SUM(CASE WHEN next_retry_at <= ? THEN 1 ELSE 0 END) AS ready,
+                SUM(CASE WHEN next_retry_at > ? THEN 1 ELSE 0 END) AS waiting
+            FROM queue
+            WHERE status=?
+            """,
+            (now, now, Status.QUEUED),
+        ).fetchone()
+        return {
+            "ready": int(row["ready"] or 0),
+            "waiting": int(row["waiting"] or 0),
+        }
 
     def pending_count(self) -> int:
         row = self._conn().execute(

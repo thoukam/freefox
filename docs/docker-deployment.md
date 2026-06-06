@@ -94,6 +94,8 @@ watch:
 
 upload:
   quota_retry_delay: 60.0
+  transient_retry_delay: 60.0
+  retry_failed_on_start: true
 
 drive:
   credentials_file: /etc/freefox/secrets/freefox-oauth-client.json

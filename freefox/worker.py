@@ -26,6 +26,26 @@ def _is_storage_quota_error(error_msg: str) -> bool:
     )
 
 
+def _is_transient_network_error(error_msg: str) -> bool:
+    lowered = error_msg.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "temporary failure in name resolution",
+            "nameresolutionerror",
+            "failed to resolve",
+            "read timed out",
+            "connect timed out",
+            "connection timed out",
+            "max retries exceeded",
+            "connection reset",
+            "connection aborted",
+            "temporarily unavailable",
+            "transient drive upload error",
+        )
+    )
+
+
 class UploadWorkerPool:
     """Fixed pool of threads that drain the upload queue."""
 
@@ -132,6 +152,22 @@ class UploadWorkerPool:
                     self._queue.defer(
                         entry.id,
                         "Quota Google Drive depasse. FreeFox reessaiera automatiquement.",
+                        retry_after_seconds=retry_delay,
+                    )
+                    continue
+
+                if _is_transient_network_error(error_msg):
+                    retry_delay = self._config.transient_retry_delay
+                    logger.warning(
+                        "[worker %d] erreur reseau temporaire pour %s; "
+                        "nouvel essai dans %.0f s",
+                        worker_id,
+                        local.name,
+                        retry_delay,
+                    )
+                    self._queue.defer(
+                        entry.id,
+                        "Erreur reseau temporaire. FreeFox reessaiera automatiquement.",
                         retry_after_seconds=retry_delay,
                     )
                     continue

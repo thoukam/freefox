@@ -68,6 +68,22 @@ def test_retry_increments(queue, tmp_path):
     refreshed = queue.get(entry.id)
     assert refreshed.retries == 1
     assert refreshed.status == Status.QUEUED
+    breakdown = queue.queued_breakdown()
+    assert breakdown["ready"] == 0
+    assert breakdown["waiting"] == 1
+
+
+def test_defer_keeps_retry_count(queue, tmp_path):
+    f = tmp_path / "bag.mcap"
+    f.write_bytes(b"x")
+    queue.add(f, "remote/bag.mcap")
+    entry = queue.next_ready()
+    queue.defer(entry.id, "Erreur reseau temporaire", retry_after_seconds=30)
+
+    refreshed = queue.get(entry.id)
+    assert refreshed.status == Status.QUEUED
+    assert refreshed.retries == 0
+    assert queue.next_ready() is None
 
 
 def test_max_retries_marks_failed(queue, tmp_path):
@@ -88,6 +104,24 @@ def test_max_retries_marks_failed(queue, tmp_path):
 
     final = queue.get(entry.id)
     assert final.status == Status.FAILED
+
+
+def test_requeue_failed_resets_entry(queue, tmp_path):
+    f = tmp_path / "bag.mcap"
+    f.write_bytes(b"x")
+    queue.add(f, "remote/bag.mcap")
+    entry = queue.next_ready()
+    queue.mark_failed(entry.id, "err", max_retries=0)
+
+    assert queue.get(entry.id).status == Status.FAILED
+    assert queue.requeue_failed() == 1
+
+    retried = queue.next_ready()
+    assert retried is not None
+    assert retried.id == entry.id
+    assert retried.status == Status.UPLOADING
+    assert retried.retries == 0
+    assert retried.error is None
 
 
 def test_stats(queue, tmp_path):

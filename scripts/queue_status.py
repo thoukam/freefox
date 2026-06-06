@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -49,6 +50,42 @@ def _format_duration(entry) -> str:
     return f"{sec}s"
 
 
+def _format_next_retry(entry) -> str:
+    if entry.status.value != "queued":
+        return "-"
+    remaining = int(max(0, entry.next_retry_at - time.time()))
+    if remaining <= 0:
+        return "pret"
+    minutes, seconds = divmod(remaining, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"dans {hours}h{minutes:02d}m"
+    if minutes:
+        return f"dans {minutes}m{seconds:02d}s"
+    return f"dans {seconds}s"
+
+
+def _human_error(error: str | None) -> str:
+    if not error:
+        return ""
+    lowered = error.lower()
+    if "quota google drive depasse" in lowered or "storage quota" in lowered:
+        return "Quota Google Drive plein; FreeFox reessaiera automatiquement."
+    if (
+        "erreur reseau temporaire" in lowered
+        or "temporary failure in name resolution" in lowered
+        or "nameresolutionerror" in lowered
+        or "failed to resolve" in lowered
+        or "read timed out" in lowered
+        or "connection timed out" in lowered
+        or "max retries exceeded" in lowered
+    ):
+        return "Connexion Google Drive instable; FreeFox reessaiera automatiquement."
+    if "local file missing" in lowered or "file not found" in lowered:
+        return "Fichier local introuvable ou deplace."
+    return "Erreur d'upload; consulter les logs pour le detail technique."
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Affiche l'etat de la file d'upload FreeFox.")
     parser.add_argument(
@@ -71,12 +108,13 @@ def main() -> None:
 
     queue = UploadQueue(db_path, initialize=False)
     print(f"Stats: {queue.stats()}")
+    print(f"Queued: {queue.queued_breakdown()}")
     print()
     print(
         f"{'ID':>4}  {'STATUT':<9}  {'PROGRES':>8}  {'DUREE':>8}  "
-        f"{'DEBIT':>24}  {'ESSAI':>5}  {'SESSION':>7}  DISTANT"
+        f"{'DEBIT':>24}  {'ESSAI':>5}  {'PROCHAIN':>11}  {'SESSION':>7}  DISTANT"
     )
-    print("-" * 128)
+    print("-" * 142)
     for entry in queue.recent(limit=args.limit):
         print(
             f"{entry.id:>4}  "
@@ -85,11 +123,12 @@ def main() -> None:
             f"{_format_duration(entry):>8}  "
             f"{_format_rate(entry):>24}  "
             f"{entry.retries:>5}  "
+            f"{_format_next_retry(entry):>11}  "
             f"{'session' if entry.upload_session_uri else '-':>7}  "
             f"{_shorten(entry.remote_path)}"
         )
         if entry.error:
-            print(f"{'':>4}  erreur: {entry.error}")
+            print(f"{'':>4}  info: {_human_error(entry.error)}")
 
 
 if __name__ == "__main__":
