@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from google.auth.transport.requests import AuthorizedSession, Request
+from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
@@ -74,6 +75,18 @@ def _uploaded_from_range(value: str | None) -> int:
         return 0
 
 
+def _is_drive_not_found(exc: Exception) -> bool:
+    return isinstance(exc, HttpError) and getattr(exc.resp, "status", None) == 404
+
+
+class DriveFolderMissing(RuntimeError):
+    """Erreur levee quand Google Drive refuse un ID de dossier parent."""
+
+    def __init__(self, folder_id: str) -> None:
+        super().__init__(f"Drive folder is missing or inaccessible: {folder_id}")
+        self.folder_id = folder_id
+
+
 class GoogleDriveBackend(StorageBackend):
     """Upload bags to a Google Drive folder, organised as remote_path hierarchy."""
 
@@ -92,40 +105,72 @@ class GoogleDriveBackend(StorageBackend):
     # Folder helpers
     # ------------------------------------------------------------------
 
-    def _get_or_create_folder(self, name: str, parent_id: str) -> str:
+    def _drop_folder_cache_id(self, folder_id: str) -> None:
+        self._folder_cache = {
+            key: value
+            for key, value in self._folder_cache.items()
+            if value != folder_id and not key.startswith(f"{folder_id}/")
+        }
+
+    def _get_or_create_folder(
+        self,
+        name: str,
+        parent_id: str,
+        ignored_folder_ids: set[str] | None = None,
+    ) -> str:
+        ignored_folder_ids = ignored_folder_ids or set()
         cache_key = f"{parent_id}/{name}"
         if cache_key in self._folder_cache:
-            return self._folder_cache[cache_key]
+            folder_id = self._folder_cache[cache_key]
+            if folder_id not in ignored_folder_ids:
+                return folder_id
+            self._folder_cache.pop(cache_key, None)
 
         q = (
             f"name='{name}' and mimeType='application/vnd.google-apps.folder' "
             f"and '{parent_id}' in parents and trashed=false"
         )
-        resp = (
-            self._service.files()
-            .list(
-                q=q,
-                fields="files(id)",
-                pageSize=1,
-                includeItemsFromAllDrives=True,
-                supportsAllDrives=True,
+        try:
+            resp = (
+                self._service.files()
+                .list(
+                    q=q,
+                    fields="files(id)",
+                    pageSize=10,
+                    includeItemsFromAllDrives=True,
+                    supportsAllDrives=True,
+                )
+                .execute()
             )
-            .execute()
-        )
+        except Exception as exc:
+            if _is_drive_not_found(exc):
+                raise DriveFolderMissing(parent_id) from exc
+            raise
+
         files = resp.get("files", [])
-        if files:
-            folder_id = files[0]["id"]
+        candidates = [
+            file["id"]
+            for file in files
+            if file.get("id") and file["id"] not in ignored_folder_ids
+        ]
+        if candidates:
+            folder_id = candidates[0]
         else:
             meta = {
                 "name": name,
                 "mimeType": "application/vnd.google-apps.folder",
                 "parents": [parent_id],
             }
-            folder = (
-                self._service.files()
-                .create(body=meta, fields="id", supportsAllDrives=True)
-                .execute()
-            )
+            try:
+                folder = (
+                    self._service.files()
+                    .create(body=meta, fields="id", supportsAllDrives=True)
+                    .execute()
+                )
+            except Exception as exc:
+                if _is_drive_not_found(exc):
+                    raise DriveFolderMissing(parent_id) from exc
+                raise
             folder_id = folder["id"]
             logger.debug("Created Drive folder '%s' (%s)", name, folder_id)
 
@@ -134,10 +179,31 @@ class GoogleDriveBackend(StorageBackend):
 
     def _resolve_folder_path(self, remote_path: str) -> tuple[str, str]:
         parts = Path(remote_path).parts
-        parent_id = self._root_folder_id or "root"
-        for part in parts[:-1]:
-            parent_id = self._get_or_create_folder(part, parent_id)
-        return parent_id, parts[-1]
+        ignored_folder_ids: set[str] = set()
+
+        for _attempt in range(max(1, len(parts) + 2)):
+            parent_id = self._root_folder_id or "root"
+            try:
+                for part in parts[:-1]:
+                    parent_id = self._get_or_create_folder(
+                        part,
+                        parent_id,
+                        ignored_folder_ids,
+                    )
+                return parent_id, parts[-1]
+            except DriveFolderMissing as exc:
+                if exc.folder_id == (self._root_folder_id or "root"):
+                    raise
+                logger.warning(
+                    "ID de dossier Drive perime ou inaccessible (%s); "
+                    "oubli de cet ID et recreation du chemin pour %s",
+                    exc.folder_id,
+                    remote_path,
+                )
+                ignored_folder_ids.add(exc.folder_id)
+                self._drop_folder_cache_id(exc.folder_id)
+
+        raise RuntimeError(f"Impossible de resoudre le chemin Drive pour {remote_path}")
 
     # ------------------------------------------------------------------
     # StorageBackend interface
