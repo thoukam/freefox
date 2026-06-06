@@ -22,7 +22,10 @@ venv/
 env/
 
 # Local configuration and runtime state
+.env
+runtime/
 config.yaml
+config/config.docker.yaml
 config/local*.yaml
 *.db
 *.db-shm

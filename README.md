@@ -89,6 +89,33 @@ journalctl -u freefox -f
 
 Le script installe le package Python local, copie la configuration d'exemple, et enregistre `systemd/freefox.service`.
 
+## Deploiement Docker
+
+Docker est disponible comme option de deploiement progressive, sans remplacer systemd.
+
+Voir [docs/docker-deployment.md](docs/docker-deployment.md), notamment la checklist "nouvelle machine".
+
+L'image officielle du projet est publiee sur GHCR:
+
+```text
+ghcr.io/thoukam/freefox
+```
+
+Elle est construite pour `linux/amd64` et `linux/arm64`.
+
+Le fichier `docker-compose.yml` utilise l'image publiee. Pour developper localement depuis le code source, `docker-compose.build.yml` sert d'override: Docker Compose fusionne les deux fichiers.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
+
+Pour utiliser l'image GHCR sans build local:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
 ## Google Drive
 
 La procedure complete est dans [docs/google-drive-setup.md](docs/google-drive-setup.md).
@@ -134,7 +161,7 @@ Test sans Google Drive:
 Test avec Google Drive:
 
 ```bash
-FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json \
+FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
 .venv/bin/python scripts/gdrive_smoke.py --config config/local.gdrive.yaml
 ```
 

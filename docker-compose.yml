@@ -1,0 +1,40 @@
+services:
+  freefox:
+    image: ${FREEFOX_IMAGE:-ghcr.io/thoukam/freefox:latest}
+    command: ["freefox", "--config", "/etc/freefox/config.yaml"]
+    user: "${FREEFOX_UID:-1000}:${FREEFOX_GID:-1000}"
+    environment:
+      FREEFOX_TOKEN_PATH: /etc/freefox/secrets/freefox-token.json
+    volumes:
+      - ${FREEFOX_BAGS_DIR:-./bags}:/bags
+      - ${FREEFOX_STATE_DIR:-/var/lib/freefox}:/var/lib/freefox
+      - ${FREEFOX_CONFIG:-./config/config.docker.example.yaml}:/etc/freefox/config.yaml:ro
+      - ${FREEFOX_SECRETS_DIR:-./secrets}:/etc/freefox/secrets
+    restart: unless-stopped
+
+  dashboard:
+    image: ${FREEFOX_IMAGE:-ghcr.io/thoukam/freefox:latest}
+    command:
+      [
+        "python",
+        "scripts/dashboard.py",
+        "--config",
+        "/etc/freefox/config.yaml",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8765",
+      ]
+    user: "${FREEFOX_UID:-1000}:${FREEFOX_GID:-1000}"
+    environment:
+      FREEFOX_TOKEN_PATH: /etc/freefox/secrets/freefox-token.json
+    ports:
+      - "${FREEFOX_DASHBOARD_PORT:-8765}:8765"
+    volumes:
+      - ${FREEFOX_BAGS_DIR:-./bags}:/bags:ro
+      - ${FREEFOX_STATE_DIR:-/var/lib/freefox}:/var/lib/freefox
+      - ${FREEFOX_CONFIG:-./config/config.docker.example.yaml}:/etc/freefox/config.yaml:ro
+      - ${FREEFOX_SECRETS_DIR:-./secrets}:/etc/freefox/secrets:ro
+    restart: unless-stopped
+    depends_on:
+      - freefox

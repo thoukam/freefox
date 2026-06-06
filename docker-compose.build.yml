@@ -1,0 +1,8 @@
+services:
+  freefox:
+    build: .
+    image: freefox:local
+
+  dashboard:
+    build: .
+    image: freefox:local
