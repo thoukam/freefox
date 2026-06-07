@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from freefox.integrity import calculate_blake3
 from freefox.queue import UploadQueue
 
 if TYPE_CHECKING:
@@ -104,9 +105,47 @@ class UploadWorkerPool:
                 )
                 continue
 
-            # Dedup: if the remote file already exists skip upload
+            blake3_digest = entry.blake3_digest
+            if self._config.verify_blake3 and not blake3_digest:
+                logger.info(
+                    "[worker %d] calcul BLAKE3 de %s",
+                    worker_id,
+                    local.name,
+                )
+                blake3_digest = calculate_blake3(
+                    local,
+                    chunk_size=max(1024 * 1024, self._config.chunk_size),
+                )
+                self._queue.mark_integrity(
+                    entry.id,
+                    blake3_digest,
+                    local.stat().st_size,
+                )
+                entry.blake3_digest = blake3_digest
+                entry.size_bytes = local.stat().st_size
+
+            # Dedup: with BLAKE3 enabled, skip only when content matches.
             try:
-                if self._backend.exists(entry.remote_path):
+                find_duplicate = getattr(self._backend, "find_duplicate", None)
+                if (
+                    self._config.verify_blake3
+                    and self._config.deduplicate_by_hash
+                    and blake3_digest
+                    and callable(find_duplicate)
+                    and find_duplicate(
+                        entry.remote_path,
+                        blake3_digest,
+                        entry.size_bytes,
+                    )
+                ):
+                    logger.info(
+                        "Doublon distant detecte par BLAKE3, skip: %s",
+                        entry.remote_path,
+                    )
+                    self._queue.mark_done(entry.id)
+                    continue
+
+                if not blake3_digest and self._backend.exists(entry.remote_path):
                     logger.info(
                         "Remote already exists, skipping: %s", entry.remote_path
                     )
@@ -127,6 +166,8 @@ class UploadWorkerPool:
                     session_callback=lambda uri, entry_id=entry.id: (
                         self._record_session(entry_id, uri)
                     ),
+                    blake3_digest=blake3_digest,
+                    expected_size=entry.size_bytes,
                 )
                 self._queue.mark_done(entry.id)
                 logger.info("[worker %d] done: %s", worker_id, local.name)

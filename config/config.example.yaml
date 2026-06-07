@@ -44,6 +44,8 @@ upload:
   quota_retry_delay: 60.0    # retry quota toutes les 60s
   transient_retry_delay: 60.0 # retry reseau toutes les 60s
   retry_failed_on_start: true # remet les echecs en file au demarrage
+  verify_blake3: true        # calcule et stocke l'empreinte BLAKE3
+  deduplicate_by_hash: true  # evite de re-uploader un contenu identique
 
   # Passer a true pour supprimer le bag local apres upload confirme.
   delete_after_upload: false

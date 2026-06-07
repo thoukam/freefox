@@ -104,6 +104,8 @@ upload:
   max_retries: 3
   retry_backoff_base: 2.0
   retry_backoff_max: 30.0
+  verify_blake3: true
+  deduplicate_by_hash: true
   delete_after_upload: false
 
 drive:

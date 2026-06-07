@@ -96,6 +96,8 @@ upload:
   quota_retry_delay: 60.0
   transient_retry_delay: 60.0
   retry_failed_on_start: true
+  verify_blake3: true
+  deduplicate_by_hash: true
 
 drive:
   credentials_file: /etc/freefox/secrets/freefox-oauth-client.json
@@ -103,6 +105,11 @@ drive:
 
 queue_db: /var/lib/freefox/queue.db
 ```
+
+Avec `verify_blake3`, FreeFox calcule une empreinte BLAKE3 locale avant upload
+et la stocke en base SQLite puis dans les metadonnees Google Drive.
+Avec `deduplicate_by_hash`, un fichier deja present avec le meme BLAKE3 et la
+meme taille n'est pas uploade une seconde fois.
 
 Creer les dossiers persistants:
 

@@ -209,6 +209,10 @@ HTML = r"""<!doctype html>
     .badge.writing   { color:#C4B5FD; background:var(--purple-bg); border:1px solid #3B1F6A; }
     .badge.stable    { color:#86EFAC; background:var(--green-bg);  border:1px solid #14532D; }
     .badge.not-queued { color:#FCA5A5; background:var(--red-bg);   border:1px solid #7F1D1D; }
+    .badge.integrity-ok { color:#86EFAC; background:var(--green-bg); border:1px solid #14532D; }
+    .badge.integrity-no { color:#FCA5A5; background:var(--red-bg); border:1px solid #7F1D1D; }
+    .badge.integrity-pending { color:#FDE68A; background:var(--amber-bg); border:1px solid #78350F; }
+    .badge.integrity-off { color:#94A3B8; background:rgba(148,163,184,.12); border:1px solid rgba(148,163,184,.24); }
 
     /* Progression */
     .prog { display: grid; grid-template-columns: 1fr 44px; gap: 8px; align-items: center; }
@@ -312,7 +316,11 @@ const statut = s => ({
   pending: "attente",
   writing: "ecriture",
   stable: "stable",
-  "not-queued": "non ajoute"
+  "not-queued": "non ajoute",
+  "integrity-ok": "OK",
+  "integrity-no": "NO",
+  "integrity-pending": "attente",
+  "integrity-off": "—"
 }[s] || s);
 
 function renderStats(st, mt, q) {
@@ -337,7 +345,8 @@ function renderTransfers(es) {
     <th style="width:170px">Progression</th><th>Chemin distant</th>
     <th style="width:88px">Taille</th><th style="width:88px">Duree</th>
     <th style="width:180px">Debit</th><th style="width:76px">Reste</th>
-    <th style="width:92px">Prochain</th><th style="width:60px">Essais</th>
+    <th style="width:92px">Prochain</th><th style="width:86px">Integrite</th>
+    <th style="width:96px">BLAKE3</th><th style="width:60px">Essais</th>
   </tr></thead><tbody>${es.map(e=>{
     const pct = Math.max(0,Math.min(100,e.progress_percent||0));
     return `<tr>
@@ -350,8 +359,10 @@ function renderTransfers(es) {
       <td class="dim">${fmtR(e.bytes_per_second)}</td>
       <td class="dim">${fmtD(e.eta_seconds)}</td>
       <td class="dim">${esc(fmtNext(e))}</td>
+      <td><span class="badge ${esc(e.integrity_status_class)}">${esc(e.integrity_status)}</span></td>
+      <td class="mono dim" title="${esc(e.blake3_digest||'')}">${esc((e.blake3_digest||'').slice(0,12)||"—")}</td>
       <td class="dim">${e.retries}</td>
-    </tr>${e.error_summary?`<tr class="err-row"><td></td><td colspan="9">⚠ ${esc(e.error_summary)}</td></tr>`:""}`;
+    </tr>${e.error_summary?`<tr class="err-row"><td></td><td colspan="11">⚠ ${esc(e.error_summary)}</td></tr>`:""}`;
   }).join("")}</tbody></table>`;
 }
 
@@ -446,9 +457,22 @@ def _human_error(error: str | None) -> str:
         return "Le fichier local est introuvable ou a ete deplace."
     if "resumable upload session expired" in lowered:
         return "La session d'upload Google Drive a expire. FreeFox va recreer une session."
+    if "integrity metadata mismatch" in lowered or "local file size changed" in lowered:
+        return "Controle d'integrite echoue. Le fichier est considere comme incoherent."
     if "permission" in lowered or "403" in lowered:
         return "Google Drive refuse l'operation. Verifiez les droits du compte ou du dossier."
     return "Erreur d'upload. Consultez les logs FreeFox pour le detail technique."
+
+
+def _integrity_status(entry: QueueEntry) -> tuple[str, str]:
+    error = (entry.error or "").lower()
+    if "integrity metadata mismatch" in error or "local file size changed" in error:
+        return "NO", "integrity-no"
+    if entry.status.value == "done" and entry.blake3_digest:
+        return "OK", "integrity-ok"
+    if entry.blake3_digest:
+        return "attente", "integrity-pending"
+    return "—", "integrity-off"
 
 
 def _entry_to_dict(entry: QueueEntry) -> dict:
@@ -465,6 +489,7 @@ def _entry_to_dict(entry: QueueEntry) -> dict:
     remaining = max(0, entry.size_bytes - bytes_sent)
     eta = remaining / bps if entry.status.value == "uploading" and bps > 0 else 0.0
     retry_after = max(0.0, entry.next_retry_at - now) if entry.status.value == "queued" else 0.0
+    integrity_status, integrity_status_class = _integrity_status(entry)
     return {
         "id": entry.id, "local_path": entry.local_path, "remote_path": entry.remote_path,
         "status": entry.status.value, "retries": entry.retries,
@@ -474,6 +499,9 @@ def _entry_to_dict(entry: QueueEntry) -> dict:
         "size_bytes": entry.size_bytes, "progress_percent": progress,
         "bytes_sent_estimate": bytes_sent, "bytes_per_second": bps,
         "duration_seconds": duration, "eta_seconds": eta,
+        "blake3_digest": entry.blake3_digest,
+        "integrity_status": integrity_status,
+        "integrity_status_class": integrity_status_class,
         "error": entry.error,
         "error_summary": _human_error(entry.error),
     }

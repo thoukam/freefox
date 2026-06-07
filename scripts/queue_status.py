@@ -18,6 +18,21 @@ def _shorten(value: str, width: int = 52) -> str:
     return "..." + value[-(width - 3):]
 
 
+def _short_hash(value: str) -> str:
+    return value[:12] if value else "-"
+
+
+def _integrity_status(entry) -> str:
+    error = (entry.error or "").lower()
+    if "integrity metadata mismatch" in error or "local file size changed" in error:
+        return "NO"
+    if entry.status.value == "done" and entry.blake3_digest:
+        return "OK"
+    if entry.blake3_digest:
+        return "attente"
+    return "-"
+
+
 def _format_rate(entry) -> str:
     if not entry.upload_started_at:
         return "-"
@@ -83,6 +98,8 @@ def _human_error(error: str | None) -> str:
         return "Connexion Google Drive instable; FreeFox reessaiera automatiquement."
     if "local file missing" in lowered or "file not found" in lowered:
         return "Fichier local introuvable ou deplace."
+    if "integrity metadata mismatch" in lowered or "local file size changed" in lowered:
+        return "Controle d'integrite echoue; fichier incoherent."
     return "Erreur d'upload; consulter les logs pour le detail technique."
 
 
@@ -112,9 +129,9 @@ def main() -> None:
     print()
     print(
         f"{'ID':>4}  {'STATUT':<9}  {'PROGRES':>8}  {'DUREE':>8}  "
-        f"{'DEBIT':>24}  {'ESSAI':>5}  {'PROCHAIN':>11}  {'SESSION':>7}  DISTANT"
+        f"{'DEBIT':>24}  {'ESSAI':>5}  {'PROCHAIN':>11}  {'INTEGRITE':>9}  {'BLAKE3':>12}  {'SESSION':>7}  DISTANT"
     )
-    print("-" * 142)
+    print("-" * 168)
     for entry in queue.recent(limit=args.limit):
         print(
             f"{entry.id:>4}  "
@@ -124,6 +141,8 @@ def main() -> None:
             f"{_format_rate(entry):>24}  "
             f"{entry.retries:>5}  "
             f"{_format_next_retry(entry):>11}  "
+            f"{_integrity_status(entry):>9}  "
+            f"{_short_hash(entry.blake3_digest):>12}  "
             f"{'session' if entry.upload_session_uri else '-':>7}  "
             f"{_shorten(entry.remote_path)}"
         )

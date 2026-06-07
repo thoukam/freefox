@@ -28,6 +28,9 @@ Robot -> ros2 bag record -> /bags/ -> FreeFox -> Google Drive
 - **Upload resumable**: envoi par chunks, retry automatique, backoff exponentiel.
 - **Reprise apres interruption**: les sessions Google Drive resumables sont stockees en SQLite.
 - **File persistante**: l'etat des transferts survit aux crashs et redemarrages.
+- **Integrite BLAKE3**: empreinte locale stockee en SQLite puis dans les metadonnees Drive.
+- **Gestion des doublons**: un contenu deja present avec le meme BLAKE3 n'est pas renvoye.
+- **Statut d'integrite**: le dashboard affiche `OK`, `NO` ou `attente` pour chaque transfert.
 - **Detection propre des fichiers**: FreeFox attend que la taille du fichier soit stable avant upload.
 - **Stockage organise**: les fichiers arrivent sous `<robot_id>/<YYYY-MM-DD>/<filename>`.
 - **Dashboard local**: interface web locale pour voir progression, debit, erreurs, fichiers surveilles et incidents.
@@ -140,6 +143,8 @@ Parametres principaux:
 | `watch.stable_seconds` | `5.0` | Temps sans modification avant upload |
 | `upload.workers` | `1` ou `2` | Nombre d'uploads en parallele |
 | `upload.chunk_size` | `8388608` | Taille des chunks resumables |
+| `upload.verify_blake3` | `true` | Calcule et stocke l'empreinte BLAKE3 |
+| `upload.deduplicate_by_hash` | `true` | Evite de renvoyer un contenu deja present |
 | `drive.credentials_file` | `secrets/client.json` | Fichier OAuth2 ou compte de service |
 | `drive.target_folder_id` | `...` | ID du dossier Google Drive cible |
 | `queue_db` | `/var/lib/freefox/queue.db` | Base SQLite persistante |

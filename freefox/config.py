@@ -11,6 +11,16 @@ from typing import Literal
 import yaml
 
 
+def _as_bool(value: object, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 @dataclass
 class WatchConfig:
     directory: Path
@@ -38,6 +48,10 @@ class UploadConfig:
     transient_retry_delay: float = 60.0
     # Retry failed queue entries automatically when the service starts.
     retry_failed_on_start: bool = True
+    # Calculate a BLAKE3 fingerprint before upload and store it in Drive metadata.
+    verify_blake3: bool = True
+    # Skip upload when a remote file with the same BLAKE3 already exists.
+    deduplicate_by_hash: bool = True
     # Delete local file after successful upload
     delete_after_upload: bool = False
 
@@ -96,8 +110,10 @@ class CollectorConfig:
             retry_backoff_max=float(upload_raw.get("retry_backoff_max", 300.0)),
             quota_retry_delay=float(upload_raw.get("quota_retry_delay", 60.0)),
             transient_retry_delay=float(upload_raw.get("transient_retry_delay", 60.0)),
-            retry_failed_on_start=bool(upload_raw.get("retry_failed_on_start", True)),
-            delete_after_upload=bool(upload_raw.get("delete_after_upload", False)),
+            retry_failed_on_start=_as_bool(upload_raw.get("retry_failed_on_start"), True),
+            verify_blake3=_as_bool(upload_raw.get("verify_blake3"), True),
+            deduplicate_by_hash=_as_bool(upload_raw.get("deduplicate_by_hash"), True),
+            delete_after_upload=_as_bool(upload_raw.get("delete_after_upload"), False),
         )
 
         drive_raw = raw.get("drive", {})
@@ -108,7 +124,7 @@ class CollectorConfig:
                 or drive_raw.get("credentials_file", "credentials.json")
             ),
             target_folder_id=drive_raw.get("target_folder_id", ""),
-            use_date_subfolder=bool(drive_raw.get("use_date_subfolder", True)),
+            use_date_subfolder=_as_bool(drive_raw.get("use_date_subfolder"), True),
         )
 
         queue_db = Path(raw.get("queue_db", "/var/lib/freefox/queue.db"))

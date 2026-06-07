@@ -23,6 +23,8 @@ upload:
   quota_retry_delay: 60.0
   transient_retry_delay: 60.0
   retry_failed_on_start: true
+  verify_blake3: true
+  deduplicate_by_hash: true
   delete_after_upload: false
 
 drive:

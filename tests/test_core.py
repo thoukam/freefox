@@ -9,6 +9,7 @@ import pytest
 
 from freefox.queue import UploadQueue, Status
 from freefox.watcher import StabilityTracker
+from freefox.integrity import calculate_blake3
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -57,6 +58,23 @@ def test_mark_done(queue, tmp_path):
     queue.mark_done(entry.id)
     refreshed = queue.get(entry.id)
     assert refreshed.status == Status.DONE
+
+
+def test_calculate_blake3_is_stable(tmp_path):
+    f = tmp_path / "bag.mcap"
+    f.write_bytes(b"freefox")
+    assert calculate_blake3(f) == calculate_blake3(f)
+
+
+def test_mark_integrity(queue, tmp_path):
+    f = tmp_path / "bag.mcap"
+    f.write_bytes(b"x" * 12)
+    entry = queue.add(f, "remote/bag.mcap")
+    queue.mark_integrity(entry.id, "abc123", 12)
+
+    refreshed = queue.get(entry.id)
+    assert refreshed.blake3_digest == "abc123"
+    assert refreshed.size_bytes == 12
 
 
 def test_retry_increments(queue, tmp_path):
