@@ -27,6 +27,9 @@ upload:
   deduplicate_by_hash: true
   delete_after_upload: false
 
+storage:
+  backend: gdrive
+
 drive:
   # Fichier OAuth2 ou compte de service monte dans /etc/freefox/secrets.
   credentials_file: /etc/freefox/secrets/freefox-oauth-client.json
@@ -35,6 +38,20 @@ drive:
   target_folder_id: "ID_DU_DOSSIER_GOOGLE_DRIVE"
 
   # Chemin Drive final: <robot_id>/<YYYY-MM-DD>/<filename>
+  use_date_subfolder: true
+
+rsync:
+  # Exemples:
+  # destination: /backup/freefox
+  # destination: user@serveur:/data/freefox
+  destination: /backup/freefox
+  ssh_command: ssh
+  options:
+    - --archive
+    - --partial
+    - --inplace
+    - --mkpath
+    - --info=progress2
   use_date_subfolder: true
 
 # Base SQLite persistante montee depuis l'hote.

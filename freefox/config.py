@@ -57,6 +57,11 @@ class UploadConfig:
 
 
 @dataclass
+class StorageConfig:
+    backend: Literal["gdrive", "rsync"] = "gdrive"
+
+
+@dataclass
 class DriveConfig:
     # Path to service-account JSON or OAuth2 credentials file
     credentials_file: Path = Path("credentials.json")
@@ -67,11 +72,33 @@ class DriveConfig:
 
 
 @dataclass
+class RsyncConfig:
+    # Destination rsync: local path, user@host:/path, or rsync://host/module.
+    destination: str = ""
+    # Command used for remote shell destinations.
+    ssh_command: str = "ssh"
+    # Options passed before source/destination.
+    options: list[str] = field(
+        default_factory=lambda: [
+            "--archive",
+            "--partial",
+            "--inplace",
+            "--mkpath",
+            "--info=progress2",
+        ]
+    )
+    # Organise uploads as <destination>/<robot_id>/<YYYY-MM-DD>/<filename>
+    use_date_subfolder: bool = True
+
+
+@dataclass
 class CollectorConfig:
     robot_id: str
     watch: WatchConfig
     upload: UploadConfig
+    storage: StorageConfig
     drive: DriveConfig
+    rsync: RsyncConfig
     # Path to SQLite queue database
     queue_db: Path = Path("/var/lib/freefox/queue.db")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -116,6 +143,14 @@ class CollectorConfig:
             delete_after_upload=_as_bool(upload_raw.get("delete_after_upload"), False),
         )
 
+        storage_raw = raw.get("storage", {})
+        storage_backend = storage_raw.get("backend", raw.get("backend", "gdrive"))
+        if storage_backend not in {"gdrive", "rsync"}:
+            raise ValueError(f"Backend de stockage inconnu: {storage_backend}")
+        storage = StorageConfig(
+            backend=storage_backend,
+        )
+
         drive_raw = raw.get("drive", {})
         drive = DriveConfig(
             credentials_file=Path(
@@ -127,6 +162,23 @@ class CollectorConfig:
             use_date_subfolder=_as_bool(drive_raw.get("use_date_subfolder"), True),
         )
 
+        rsync_raw = raw.get("rsync", {})
+        rsync = RsyncConfig(
+            destination=rsync_raw.get("destination", ""),
+            ssh_command=rsync_raw.get("ssh_command", "ssh"),
+            options=rsync_raw.get(
+                "options",
+                [
+                    "--archive",
+                    "--partial",
+                    "--inplace",
+                    "--mkpath",
+                    "--info=progress2",
+                ],
+            ),
+            use_date_subfolder=_as_bool(rsync_raw.get("use_date_subfolder"), True),
+        )
+
         queue_db = Path(raw.get("queue_db", "/var/lib/freefox/queue.db"))
         log_level = raw.get("log_level", "INFO").upper()
 
@@ -134,7 +186,9 @@ class CollectorConfig:
             robot_id=robot_id,
             watch=watch,
             upload=upload,
+            storage=storage,
             drive=drive,
+            rsync=rsync,
             queue_db=queue_db,
             log_level=log_level,
         )

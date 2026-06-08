@@ -50,6 +50,10 @@ upload:
   # Passer a true pour supprimer le bag local apres upload confirme.
   delete_after_upload: false
 
+storage:
+  # Backend de stockage: gdrive ou rsync.
+  backend: gdrive
+
 drive:
   # Chemin vers credentials.json, OAuth2 ou compte de service.
   # Peut etre surcharge avec FREEFOX_CREDENTIALS.
@@ -63,6 +67,20 @@ drive:
 
   # Organise les fichiers sous <robot_id>/<YYYY-MM-DD>/<filename>
   # dans le dossier cible.
+  use_date_subfolder: true
+
+rsync:
+  # Destination locale ou distante:
+  # - /mnt/nas/freefox
+  # - user@serveur:/data/freefox
+  destination: "/mnt/nas/freefox"
+  ssh_command: ssh
+  options:
+    - --archive
+    - --partial
+    - --inplace
+    - --mkpath
+    - --info=progress2
   use_date_subfolder: true
 
 # Base SQLite de la file d'upload persistante.

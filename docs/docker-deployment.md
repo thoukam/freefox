@@ -7,7 +7,7 @@ L'idee:
 ```text
 robot
   docker compose
-    freefox     -> surveille /bags et upload vers Google Drive
+    freefox     -> surveille /bags et upload vers le backend configure
     dashboard  -> expose http://IP_DU_ROBOT:8765
 ```
 
@@ -53,7 +53,7 @@ Pour deployer FreeFox Docker sur une nouvelle machine, il faut:
 - un dossier d'etat persistant, par exemple `./runtime/freefox` ou `/var/lib/freefox`
 - un fichier `.env`
 - un fichier `config/config.docker.yaml`
-- les secrets Google dans `secrets/`
+- les secrets du backend choisi dans `secrets/`
 - le fichier `docker-compose.yml`
 
 Fichiers a copier ou creer localement:
@@ -69,6 +69,13 @@ secrets/freefox-oauth-client.json
 Ces fichiers sont locaux a la machine et ne doivent pas etre commits.
 
 Si l'image existe deja dans GHCR, il n'est pas necessaire de cloner tout le code sur le robot.
+
+Pour rsync, les secrets Google ne sont pas necessaires. On utilise plutot une cle
+SSH dediee, par exemple:
+
+```text
+secrets/freefox_rsync
+```
 
 ## Preparation sur le robot
 
@@ -106,10 +113,177 @@ drive:
 queue_db: /var/lib/freefox/queue.db
 ```
 
+Pour utiliser rsync a la place de Google Drive:
+
+```yaml
+storage:
+  backend: rsync
+
+rsync:
+  destination: user@serveur:/data/freefox
+  ssh_command: ssh
+  options:
+    - --archive
+    - --partial
+    - --inplace
+    - --mkpath
+    - --info=progress2
+```
+
 Avec `verify_blake3`, FreeFox calcule une empreinte BLAKE3 locale avant upload
-et la stocke en base SQLite puis dans les metadonnees Google Drive.
+et la stocke en base SQLite puis dans les metadonnees du backend.
 Avec `deduplicate_by_hash`, un fichier deja present avec le meme BLAKE3 et la
 meme taille n'est pas uploade une seconde fois.
+Avec rsync, cette verification utilise un petit fichier sidecar
+`<filename>.blake3` envoye a cote du bag.
+
+## Deploiement rsync sur un vrai robot
+
+Cette option est utile quand le robot doit envoyer les bags vers un PC de
+supervision, un NAS ou un serveur SSH au lieu de Google Drive.
+
+Flux cible:
+
+```text
+robot -> FreeFox -> rsync SSH -> machine de destination
+```
+
+### Sur la machine de destination
+
+Creer le dossier de stockage:
+
+```bash
+sudo mkdir -p /data/freefox
+sudo chown -R "$USER:$USER" /data/freefox
+```
+
+La destination finale ressemblera a:
+
+```text
+/data/freefox/<robot_id>/<YYYY-MM-DD>/<bag.mcap>
+/data/freefox/<robot_id>/<YYYY-MM-DD>/<bag.mcap.blake3>
+```
+
+### Sur le robot
+
+Installer les outils systeme si FreeFox tourne hors Docker:
+
+```bash
+sudo apt update
+sudo apt install -y rsync openssh-client
+```
+
+Avec Docker, `rsync` et `openssh-client` sont deja installes dans l'image
+FreeFox.
+
+Creer une cle SSH dediee au transfert:
+
+```bash
+ssh-keygen -t ed25519 -f ./secrets/freefox_rsync -C "freefox-rsync"
+```
+
+Copier la cle publique vers la machine de destination:
+
+```bash
+ssh-copy-id -i ./secrets/freefox_rsync.pub user@IP_DE_DESTINATION
+```
+
+Tester SSH:
+
+```bash
+ssh -i ./secrets/freefox_rsync user@IP_DE_DESTINATION
+```
+
+Tester rsync seul avant de lancer FreeFox:
+
+```bash
+echo test > /tmp/freefox-rsync-test.txt
+rsync -av --mkpath -e "ssh -i ./secrets/freefox_rsync" \
+  /tmp/freefox-rsync-test.txt \
+  user@IP_DE_DESTINATION:/data/freefox/test/
+```
+
+### Configuration FreeFox
+
+Dans `config/config.docker.yaml`:
+
+```yaml
+storage:
+  backend: rsync
+
+rsync:
+  destination: user@IP_DE_DESTINATION:/data/freefox
+  ssh_command: "ssh -i /etc/freefox/secrets/freefox_rsync -o StrictHostKeyChecking=accept-new"
+  options:
+    - --archive
+    - --partial
+    - --inplace
+    - --mkpath
+    - --info=progress2
+  use_date_subfolder: true
+```
+
+Garder aussi:
+
+```yaml
+upload:
+  verify_blake3: true
+  deduplicate_by_hash: true
+```
+
+### Montage Docker de la cle SSH
+
+Dans `docker-compose.yml`, le dossier `secrets` est monte dans le conteneur:
+
+```yaml
+volumes:
+  - ${FREEFOX_SECRETS_DIR:-./secrets}:/etc/freefox/secrets:ro
+```
+
+La cle locale:
+
+```text
+./secrets/freefox_rsync
+```
+
+sera donc visible dans le conteneur comme:
+
+```text
+/etc/freefox/secrets/freefox_rsync
+```
+
+### Lancement et verification
+
+Lancer FreeFox:
+
+```bash
+docker compose up -d
+```
+
+Voir les logs:
+
+```bash
+docker compose logs -f freefox
+```
+
+Verifier la destination:
+
+```bash
+ssh user@IP_DE_DESTINATION "find /data/freefox -type f | sort | tail -20"
+```
+
+Verifier la file depuis le robot:
+
+```bash
+docker compose exec freefox python scripts/queue_status.py /var/lib/freefox/queue.db --limit 10
+```
+
+Un transfert valide doit afficher:
+
+```text
+STATUT: done
+INTEGRITE: OK
+```
 
 Creer les dossiers persistants:
 

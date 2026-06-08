@@ -8,6 +8,7 @@ import signal
 import sys
 from pathlib import Path
 
+from freefox.backends.factory import build_backend
 from freefox.config import CollectorConfig
 from freefox.queue import UploadQueue
 from freefox.watcher import FileWatcher
@@ -19,7 +20,12 @@ logger = logging.getLogger(__name__)
 def _build_remote_path(config: CollectorConfig, local_path: Path) -> str:
     """Construct the remote path: <robot_id>[/<date>]/<filename>."""
     parts = [config.robot_id]
-    if config.drive.use_date_subfolder:
+    use_date_subfolder = (
+        config.rsync.use_date_subfolder
+        if config.storage.backend == "rsync"
+        else config.drive.use_date_subfolder
+    )
+    if use_date_subfolder:
         parts.append(datetime.date.today().isoformat())
     parts.append(local_path.name)
     return "/".join(parts)
@@ -32,13 +38,7 @@ class CollectorService:
         self._config = config
         self._queue = UploadQueue(config.queue_db)
 
-        # Build backend (only Drive for now; future: S3, NAS, …)
-        from freefox.backends.gdrive import GoogleDriveBackend
-
-        self._backend = GoogleDriveBackend(
-            credentials_file=config.drive.credentials_file,
-            target_folder_id=config.drive.target_folder_id,
-        )
+        self._backend = build_backend(config)
 
         self._watcher = FileWatcher(
             directory=config.watch.directory,

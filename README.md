@@ -4,9 +4,9 @@
 
 # FreeFox
 
-**Collecte et upload automatique de rosbag ROS 2 vers Google Drive, libre et open source.**
+**Collecte et upload automatique de rosbag ROS 2 vers Google Drive ou rsync, libre et open source.**
 
-FreeFox est un petit service Linux qui surveille un dossier, detecte les rosbags termines, les place dans une file SQLite persistante, puis les envoie vers Google Drive avec reprise d'upload.
+FreeFox est un petit service Linux qui surveille un dossier, detecte les rosbags termines, les place dans une file SQLite persistante, puis les envoie vers un backend de stockage configure.
 
 L'objectif est simple: donner a une equipe robotique un outil de collecte de donnees fiable, local, lisible, et sans abonnement.
 
@@ -19,7 +19,7 @@ L'objectif est simple: donner a une equipe robotique un outil de collecte de don
 </p>
 
 ```text
-Robot -> ros2 bag record -> /bags/ -> FreeFox -> Google Drive
+Robot -> ros2 bag record -> /bags/ -> FreeFox -> Google Drive / rsync
 ```
 
 ## Fonctionnalites
@@ -34,6 +34,7 @@ Robot -> ros2 bag record -> /bags/ -> FreeFox -> Google Drive
 - **Detection propre des fichiers**: FreeFox attend que la taille du fichier soit stable avant upload.
 - **Stockage organise**: les fichiers arrivent sous `<robot_id>/<YYYY-MM-DD>/<filename>`.
 - **Dashboard local**: interface web locale pour voir progression, debit, erreurs, fichiers surveilles et incidents.
+- **Backends de stockage**: Google Drive par defaut, rsync pour NAS, serveur SSH ou dossier monte.
 - **Compatible ROS 2**: fonctionne avec les bags `.mcap` et `.db3`.
 
 ## Demarrage rapide
@@ -130,6 +131,37 @@ Deux modes sont possibles:
 
 Pour un Drive personnel, OAuth2 est le chemin le plus simple.
 
+## Rsync
+
+Rsync peut etre utilise a la place de Google Drive pour envoyer les bags vers un
+NAS, un disque monte ou un serveur accessible en SSH.
+Quand BLAKE3 est active, FreeFox cree aussi un petit fichier sidecar
+`<filename>.blake3` pour verifier les doublons sans relire le bag distant.
+
+Exemple local:
+
+```yaml
+storage:
+  backend: rsync
+
+rsync:
+  destination: /mnt/nas/freefox
+```
+
+Exemple SSH:
+
+```yaml
+storage:
+  backend: rsync
+
+rsync:
+  destination: user@serveur:/data/freefox
+  ssh_command: ssh
+```
+
+Pour le deploiement robot vers une machine distante, voir la section rsync de
+[docs/docker-deployment.md](docs/docker-deployment.md#deploiement-rsync-sur-un-vrai-robot).
+
 ## Configuration
 
 Voir [`config/config.example.yaml`](config/config.example.yaml).
@@ -145,8 +177,10 @@ Parametres principaux:
 | `upload.chunk_size` | `8388608` | Taille des chunks resumables |
 | `upload.verify_blake3` | `true` | Calcule et stocke l'empreinte BLAKE3 |
 | `upload.deduplicate_by_hash` | `true` | Evite de renvoyer un contenu deja present |
+| `storage.backend` | `gdrive` | Backend utilise: `gdrive` ou `rsync` |
 | `drive.credentials_file` | `secrets/client.json` | Fichier OAuth2 ou compte de service |
 | `drive.target_folder_id` | `...` | ID du dossier Google Drive cible |
+| `rsync.destination` | `user@host:/data/freefox` | Destination rsync locale ou SSH |
 | `queue_db` | `/var/lib/freefox/queue.db` | Base SQLite persistante |
 
 Variables d'environnement utiles:

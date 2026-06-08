@@ -389,11 +389,15 @@ function renderIncidents(is) {
 }
 
 function renderConfig(cfg) {
+  const destination = cfg.storage_backend === "rsync"
+    ? cfg.rsync_destination
+    : (cfg.drive_folder_id||"racine");
   const rows = [
     ["Robot",      cfg.robot_id],
+    ["Backend",    cfg.storage_backend],
     ["Dossier",    cfg.watch_directory],
     ["Base SQLite", cfg.queue_db],
-    ["Drive ID",   cfg.drive_folder_id||"racine"],
+    ["Destination", destination],
     ["Extensions", (cfg.extensions||[]).join(", ")],
     ["Stabilite",  `${cfg.stable_seconds}s`],
   ];
@@ -618,7 +622,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
             body = json.dumps({
                 "config": {
                     "robot_id": cfg.robot_id, "watch_directory": str(cfg.watch.directory),
+                    "storage_backend": cfg.storage.backend,
                     "queue_db": str(cfg.queue_db), "drive_folder_id": cfg.drive.target_folder_id,
+                    "rsync_destination": cfg.rsync.destination,
                     "extensions": cfg.watch.extensions, "stable_seconds": cfg.watch.stable_seconds,
                 },
                 "stats": self.server.queue.stats(),

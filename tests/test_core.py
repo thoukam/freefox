@@ -10,6 +10,8 @@ import pytest
 from freefox.queue import UploadQueue, Status
 from freefox.watcher import StabilityTracker
 from freefox.integrity import calculate_blake3
+from freefox.config import CollectorConfig
+from freefox.backends.rsync import _parse_progress_percent
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -75,6 +77,30 @@ def test_mark_integrity(queue, tmp_path):
     refreshed = queue.get(entry.id)
     assert refreshed.blake3_digest == "abc123"
     assert refreshed.size_bytes == 12
+
+
+def test_config_accepts_rsync_backend(tmp_path):
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        """
+robot_id: robot-test
+watch:
+  directory: /tmp/bags
+storage:
+  backend: rsync
+rsync:
+  destination: /tmp/freefox-rsync
+"""
+    )
+
+    config = CollectorConfig.from_yaml(config_file)
+    assert config.storage.backend == "rsync"
+    assert config.rsync.destination == "/tmp/freefox-rsync"
+
+
+def test_rsync_progress_parser():
+    assert _parse_progress_percent("  12,345,678  42%   11.8MB/s") == 42.0
+    assert _parse_progress_percent("no progress here") is None
 
 
 def test_retry_increments(queue, tmp_path):
