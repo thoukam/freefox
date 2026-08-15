@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from freefox.config import UploadConfig
+from freefox.integrity import calculate_blake3
 from freefox.queue import UploadQueue
 from freefox.watcher import FileWatcher
 from freefox.worker import UploadWorkerPool
@@ -26,6 +27,20 @@ class LocalBackend:
     def exists(self, remote_path: str) -> bool:
         return (self._root / remote_path).exists()
 
+    def find_duplicate(
+        self,
+        remote_path: str,
+        blake3_digest: str,
+        size_bytes: int,
+    ) -> bool:
+        destination = self._root / remote_path
+        if not destination.exists():
+            return False
+        return (
+            destination.stat().st_size == size_bytes
+            and calculate_blake3(destination) == blake3_digest
+        )
+
     def upload(
         self,
         local_path: Path,
@@ -34,6 +49,8 @@ class LocalBackend:
         progress_callback=None,
         session_uri: str = "",
         session_callback=None,
+        blake3_digest: str = "",
+        expected_size: int = 0,
     ) -> str:
         destination = self._root / remote_path
         destination.parent.mkdir(parents=True, exist_ok=True)

@@ -79,6 +79,10 @@ def _is_drive_not_found(exc: Exception) -> bool:
     return isinstance(exc, HttpError) and getattr(exc.resp, "status", None) == 404
 
 
+def _app_property_query(key: str, value: str) -> str:
+    return f"appProperties has {{ key='{key}' and value='{value}' }}"
+
+
 class DriveFolderMissing(RuntimeError):
     """Erreur levee quand Google Drive refuse un ID de dossier parent."""
 
@@ -225,6 +229,36 @@ class GoogleDriveBackend(StorageBackend):
         )
         return bool(resp.get("files"))
 
+    def find_duplicate(
+        self,
+        remote_path: str,
+        blake3_digest: str,
+        size_bytes: int,
+    ) -> bool:
+        if not blake3_digest:
+            return False
+        parent_id, _filename = self._resolve_folder_path(remote_path)
+        q = (
+            f"'{parent_id}' in parents and trashed=false "
+            f"and {_app_property_query('freefox_blake3', blake3_digest)}"
+        )
+        resp = (
+            self._service.files()
+            .list(
+                q=q,
+                fields="files(id,name,size,appProperties)",
+                pageSize=10,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+        for file in resp.get("files", []):
+            remote_size = int(file.get("size") or 0)
+            if remote_size == size_bytes:
+                return True
+        return False
+
     def upload(
         self,
         local_path: Path,
@@ -233,9 +267,15 @@ class GoogleDriveBackend(StorageBackend):
         progress_callback: ProgressCallback | None = None,
         session_uri: str = "",
         session_callback: SessionCallback | None = None,
+        blake3_digest: str = "",
+        expected_size: int = 0,
     ) -> str:
         parent_id, filename = self._resolve_folder_path(remote_path)
         file_size = local_path.stat().st_size
+        if expected_size and expected_size != file_size:
+            raise RuntimeError(
+                f"Local file size changed before upload: {expected_size} -> {file_size}"
+            )
 
         logger.info(
             "Uploading %s -> Drive:%s  (%.1f MiB)",
@@ -254,6 +294,11 @@ class GoogleDriveBackend(StorageBackend):
                 raise
         else:
             meta = {"name": filename, "parents": [parent_id]}
+            if blake3_digest:
+                meta["appProperties"] = {
+                    "freefox_blake3": blake3_digest,
+                    "freefox_size": str(file_size),
+                }
             session_uri = self._start_resumable_session(meta, file_size)
             if session_callback:
                 session_callback(session_uri)
@@ -311,6 +356,8 @@ class GoogleDriveBackend(StorageBackend):
             result = self._query_completed_session(session_uri, file_size)
 
         file_id = result["id"]
+        if blake3_digest:
+            self._ensure_uploaded_metadata(file_id, blake3_digest, file_size, result)
         link = result.get("webViewLink", f"https://drive.google.com/file/d/{file_id}")
         logger.info("Upload complete: %s -> %s", filename, link)
         return link
@@ -320,7 +367,7 @@ class GoogleDriveBackend(StorageBackend):
             "https://www.googleapis.com/upload/drive/v3/files",
             params={
                 "uploadType": "resumable",
-                "fields": "id,webViewLink",
+                "fields": "id,webViewLink,size,appProperties",
                 "supportsAllDrives": "true",
             },
             json=meta,
@@ -375,3 +422,50 @@ class GoogleDriveBackend(StorageBackend):
             f"Drive upload completed but final metadata was unavailable: "
             f"HTTP {response.status_code}: {response.text}"
         )
+
+    def _ensure_uploaded_metadata(
+        self,
+        file_id: str,
+        blake3_digest: str,
+        file_size: int,
+        result: dict[str, object],
+    ) -> None:
+        app_properties = result.get("appProperties") or {}
+        remote_size = int(result.get("size") or 0)
+        if not app_properties or not remote_size:
+            result = (
+                self._service.files()
+                .get(
+                    fileId=file_id,
+                    fields="id,size,appProperties",
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+            app_properties = result.get("appProperties") or {}
+            remote_size = int(result.get("size") or 0)
+
+        remote_blake3 = app_properties.get("freefox_blake3")
+        if remote_blake3 != blake3_digest:
+            result = (
+                self._service.files()
+                .update(
+                    fileId=file_id,
+                    body={
+                        "appProperties": {
+                            "freefox_blake3": blake3_digest,
+                            "freefox_size": str(file_size),
+                        }
+                    },
+                    fields="id,size,appProperties",
+                    supportsAllDrives=True,
+                )
+                .execute()
+            )
+            app_properties = result.get("appProperties") or {}
+            remote_size = int(result.get("size") or 0)
+            remote_blake3 = app_properties.get("freefox_blake3")
+            if remote_blake3 != blake3_digest:
+                raise RuntimeError("Drive integrity metadata mismatch: BLAKE3 differs")
+        if remote_size != file_size:
+            raise RuntimeError("Drive integrity metadata mismatch: size differs")

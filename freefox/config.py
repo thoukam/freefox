@@ -11,6 +11,16 @@ from typing import Literal
 import yaml
 
 
+def _as_bool(value: object, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 @dataclass
 class WatchConfig:
     directory: Path
@@ -38,8 +48,17 @@ class UploadConfig:
     transient_retry_delay: float = 60.0
     # Retry failed queue entries automatically when the service starts.
     retry_failed_on_start: bool = True
+    # Calculate a BLAKE3 fingerprint before upload and store it in Drive metadata.
+    verify_blake3: bool = True
+    # Skip upload when a remote file with the same BLAKE3 already exists.
+    deduplicate_by_hash: bool = True
     # Delete local file after successful upload
     delete_after_upload: bool = False
+
+
+@dataclass
+class StorageConfig:
+    backend: Literal["gdrive", "rsync"] = "gdrive"
 
 
 @dataclass
@@ -53,11 +72,33 @@ class DriveConfig:
 
 
 @dataclass
+class RsyncConfig:
+    # Destination rsync: local path, user@host:/path, or rsync://host/module.
+    destination: str = ""
+    # Command used for remote shell destinations.
+    ssh_command: str = "ssh"
+    # Options passed before source/destination.
+    options: list[str] = field(
+        default_factory=lambda: [
+            "--archive",
+            "--partial",
+            "--inplace",
+            "--mkpath",
+            "--info=progress2",
+        ]
+    )
+    # Organise uploads as <destination>/<robot_id>/<YYYY-MM-DD>/<filename>
+    use_date_subfolder: bool = True
+
+
+@dataclass
 class CollectorConfig:
     robot_id: str
     watch: WatchConfig
     upload: UploadConfig
+    storage: StorageConfig
     drive: DriveConfig
+    rsync: RsyncConfig
     # Path to SQLite queue database
     queue_db: Path = Path("/var/lib/freefox/queue.db")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -96,8 +137,18 @@ class CollectorConfig:
             retry_backoff_max=float(upload_raw.get("retry_backoff_max", 300.0)),
             quota_retry_delay=float(upload_raw.get("quota_retry_delay", 60.0)),
             transient_retry_delay=float(upload_raw.get("transient_retry_delay", 60.0)),
-            retry_failed_on_start=bool(upload_raw.get("retry_failed_on_start", True)),
-            delete_after_upload=bool(upload_raw.get("delete_after_upload", False)),
+            retry_failed_on_start=_as_bool(upload_raw.get("retry_failed_on_start"), True),
+            verify_blake3=_as_bool(upload_raw.get("verify_blake3"), True),
+            deduplicate_by_hash=_as_bool(upload_raw.get("deduplicate_by_hash"), True),
+            delete_after_upload=_as_bool(upload_raw.get("delete_after_upload"), False),
+        )
+
+        storage_raw = raw.get("storage", {})
+        storage_backend = storage_raw.get("backend", raw.get("backend", "gdrive"))
+        if storage_backend not in {"gdrive", "rsync"}:
+            raise ValueError(f"Backend de stockage inconnu: {storage_backend}")
+        storage = StorageConfig(
+            backend=storage_backend,
         )
 
         drive_raw = raw.get("drive", {})
@@ -108,7 +159,24 @@ class CollectorConfig:
                 or drive_raw.get("credentials_file", "credentials.json")
             ),
             target_folder_id=drive_raw.get("target_folder_id", ""),
-            use_date_subfolder=bool(drive_raw.get("use_date_subfolder", True)),
+            use_date_subfolder=_as_bool(drive_raw.get("use_date_subfolder"), True),
+        )
+
+        rsync_raw = raw.get("rsync", {})
+        rsync = RsyncConfig(
+            destination=rsync_raw.get("destination", ""),
+            ssh_command=rsync_raw.get("ssh_command", "ssh"),
+            options=rsync_raw.get(
+                "options",
+                [
+                    "--archive",
+                    "--partial",
+                    "--inplace",
+                    "--mkpath",
+                    "--info=progress2",
+                ],
+            ),
+            use_date_subfolder=_as_bool(rsync_raw.get("use_date_subfolder"), True),
         )
 
         queue_db = Path(raw.get("queue_db", "/var/lib/freefox/queue.db"))
@@ -118,7 +186,9 @@ class CollectorConfig:
             robot_id=robot_id,
             watch=watch,
             upload=upload,
+            storage=storage,
             drive=drive,
+            rsync=rsync,
             queue_db=queue_db,
             log_level=log_level,
         )

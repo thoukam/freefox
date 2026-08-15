@@ -44,6 +44,7 @@ class QueueEntry:
     upload_started_at: float = 0.0
     upload_finished_at: float = 0.0
     upload_session_uri: str = ""
+    blake3_digest: str = ""
     error: Optional[str] = None
 
 
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS queue (
     upload_started_at REAL NOT NULL DEFAULT 0,
     upload_finished_at REAL NOT NULL DEFAULT 0,
     upload_session_uri TEXT NOT NULL DEFAULT '',
+    blake3_digest TEXT NOT NULL DEFAULT '',
     error        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_status ON queue(status, next_retry_at);
@@ -144,9 +146,19 @@ class UploadQueue:
             conn.execute(
                 "ALTER TABLE queue ADD COLUMN upload_session_uri TEXT NOT NULL DEFAULT ''"
             )
+        if "blake3_digest" not in columns:
+            conn.execute(
+                "ALTER TABLE queue ADD COLUMN blake3_digest TEXT NOT NULL DEFAULT ''"
+            )
 
     @staticmethod
     def _row_to_entry(row: sqlite3.Row) -> QueueEntry:
+        def value(name: str, default):
+            try:
+                return row[name]
+            except IndexError:
+                return default
+
         return QueueEntry(
             id=row["id"],
             local_path=row["local_path"],
@@ -162,6 +174,7 @@ class UploadQueue:
             upload_started_at=row["upload_started_at"],
             upload_finished_at=row["upload_finished_at"],
             upload_session_uri=row["upload_session_uri"],
+            blake3_digest=value("blake3_digest", ""),
             error=row["error"],
         )
 
@@ -322,6 +335,26 @@ class UploadQueue:
                 WHERE id=?
                 """,
                 (session_uri, time.time(), entry_id),
+            )
+            conn.commit()
+
+    def mark_integrity(
+        self,
+        entry_id: int,
+        blake3_digest: str,
+        size_bytes: int,
+    ) -> None:
+        conn = self._conn()
+        with self._lock:
+            conn.execute(
+                """
+                UPDATE queue
+                SET blake3_digest=?,
+                    size_bytes=?,
+                    updated_at=?
+                WHERE id=?
+                """,
+                (blake3_digest, max(0, size_bytes), time.time(), entry_id),
             )
             conn.commit()
 

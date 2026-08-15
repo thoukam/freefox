@@ -7,12 +7,13 @@ Ce guide explique comment installer FreeFox en local pour les tests, puis comme 
 - Linux
 - Python 3.10 ou plus recent
 - `pip`
-- Une configuration Google Drive, documentee dans [google-drive-setup.md](google-drive-setup.md)
+- Une configuration Google Drive, documentee dans [google-drive-setup.md](google-drive-setup.md), ou une destination rsync locale/SSH
 
 Optionnel mais recommande:
 
 - `watchdog`, installe automatiquement par le package Python, pour une surveillance efficace du systeme de fichiers
 - `sqlite3`, utile pour inspecter la base de file d'upload
+- `rsync` et `openssh-client`, necessaires uniquement si `storage.backend: rsync`
 
 ## Installation locale de developpement
 
@@ -111,6 +112,8 @@ upload:
   max_retries: 3
   retry_backoff_base: 2.0
   retry_backoff_max: 30.0
+  verify_blake3: true
+  deduplicate_by_hash: true
   delete_after_upload: false
 
 drive:
