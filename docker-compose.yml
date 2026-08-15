@@ -5,11 +5,13 @@ services:
     user: "${FREEFOX_UID:-1000}:${FREEFOX_GID:-1000}"
     environment:
       FREEFOX_TOKEN_PATH: /etc/freefox/secrets/freefox-token.json
+      AWS_SHARED_CREDENTIALS_FILE: /etc/freefox/secrets/aws-credentials
+      AWS_CONFIG_FILE: /etc/freefox/secrets/aws-config
     volumes:
       - ${FREEFOX_BAGS_DIR:-./bags}:/bags
       - ${FREEFOX_STATE_DIR:-/var/lib/freefox}:/var/lib/freefox
       - ${FREEFOX_CONFIG:-./config/config.docker.example.yaml}:/etc/freefox/config.yaml:ro
-      - ${FREEFOX_SECRETS_DIR:-./secrets}:/etc/freefox/secrets
+      - ${FREEFOX_SECRETS_DIR:-./secrets}:/etc/freefox/secrets:ro
     restart: unless-stopped
 
   dashboard:

@@ -13,7 +13,7 @@ from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-from freefox.backends import ProgressCallback, SessionCallback, StorageBackend
+from freefox.backends import Inspection, ProgressCallback, SessionCallback, StorageBackend
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +228,11 @@ class GoogleDriveBackend(StorageBackend):
             .execute()
         )
         return bool(resp.get("files"))
+
+    def inspect(self, remote_path: str, blake3_digest: str, size_bytes: int) -> Inspection:
+        if blake3_digest and self.find_duplicate(remote_path, blake3_digest, size_bytes):
+            return Inspection.IDENTICAL
+        return Inspection.CONFLICT if self.exists(remote_path) else Inspection.MISSING
 
     def find_duplicate(
         self,

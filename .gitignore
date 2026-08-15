@@ -45,6 +45,8 @@ token.json
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
+*.tmp
 
 # deployment artifacts
 deployment/

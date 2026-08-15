@@ -51,7 +51,7 @@ upload:
   delete_after_upload: false
 
 storage:
-  # Backend de stockage: gdrive ou rsync.
+  # Backend de stockage: gdrive, rsync ou s3.
   backend: gdrive
 
 drive:
@@ -81,6 +81,18 @@ rsync:
     - --inplace
     - --mkpath
     - --info=progress2
+  use_date_subfolder: true
+
+s3:
+  # Bucket existant. Les credentials proviennent de la chaine AWS externe.
+  bucket: robot-bags
+  object_prefix: freefox
+  region: eu-west-3
+  # Omettre pour AWS; renseigner pour MinIO.
+  endpoint_url: ""
+  profile: ""
+  addressing_style: auto
+  # ca_bundle: /etc/freefox/secrets/minio-ca.pem
   use_date_subfolder: true
 
 # Base SQLite de la file d'upload persistante.

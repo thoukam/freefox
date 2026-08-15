@@ -39,7 +39,7 @@ if ! getent group "$SERVICE_GROUP" >/dev/null 2>&1; then
 fi
 
 # Install Python package
-python3 -m pip install --break-system-packages -e "$SCRIPT_DIR"
+python3 -m pip install --break-system-packages -e "$SCRIPT_DIR[s3]"
 
 # Create directories
 install -d -m 755 "$CONFIG_DIR"
