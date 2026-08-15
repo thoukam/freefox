@@ -298,7 +298,7 @@ const esc = v => String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">
 const fmtB = v => { if(!v) return "0 B"; const u=["B","KiB","MiB","GiB","TiB"]; let n=v,i=0; while(n>=1024&&i<u.length-1){n/=1024;i++;} return `${n.toFixed(n>=10||i===0?0:1)} ${u[i]}`; };
 const fmtT = v => v ? new Date(v*1000).toLocaleString() : "—";
 const fmtD = s => { if(!s||s<0)return"—"; s=Math.round(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),r=s%60; return h?`${h}h ${m}m`:m?`${m}m ${r}s`:`${r}s`; };
-const fmtR = b => (!b||b<0)?"—":`${(b/1024/1024).toFixed(2)} MiB/s`;
+const fmtR = b => (!b||b<0)?"—":`${(b/1024/1024).toFixed(2)} MiB/s · ${((b*8)/1000/1000).toFixed(2)} Mbps`;
 const fmtNext = e => {
   if(e.status !== "queued") return "—";
   if(!e.retry_after_seconds || e.retry_after_seconds <= 0) return "pret";
@@ -335,8 +335,9 @@ function renderTransfers(es) {
   $("transfers").innerHTML = `<table><thead><tr>
     <th style="width:48px">ID</th><th style="width:110px">Statut</th>
     <th style="width:170px">Progression</th><th>Chemin distant</th>
-    <th style="width:88px">Taille</th><th style="width:130px">Debit</th>
-    <th style="width:76px">Reste</th><th style="width:92px">Prochain</th><th style="width:60px">Essais</th>
+    <th style="width:88px">Taille</th><th style="width:88px">Duree</th>
+    <th style="width:180px">Debit</th><th style="width:76px">Reste</th>
+    <th style="width:92px">Prochain</th><th style="width:60px">Essais</th>
   </tr></thead><tbody>${es.map(e=>{
     const pct = Math.max(0,Math.min(100,e.progress_percent||0));
     return `<tr>
@@ -345,11 +346,12 @@ function renderTransfers(es) {
       <td><div class="prog"><div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div><span class="pct">${pct.toFixed(1)}%</span></div></td>
       <td class="mono" title="${esc(e.remote_path)}">${esc(e.remote_path)}</td>
       <td class="dim">${fmtB(e.size_bytes)}</td>
+      <td class="dim">${fmtD(e.duration_seconds)}</td>
       <td class="dim">${fmtR(e.bytes_per_second)}</td>
       <td class="dim">${fmtD(e.eta_seconds)}</td>
       <td class="dim">${esc(fmtNext(e))}</td>
       <td class="dim">${e.retries}</td>
-    </tr>${e.error_summary?`<tr class="err-row"><td></td><td colspan="8">⚠ ${esc(e.error_summary)}</td></tr>`:""}`;
+    </tr>${e.error_summary?`<tr class="err-row"><td></td><td colspan="9">⚠ ${esc(e.error_summary)}</td></tr>`:""}`;
   }).join("")}</tbody></table>`;
 }
 
