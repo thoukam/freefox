@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "freefox"
 version = "0.1.0"
-description = "Service libre d'upload automatique de rosbags ROS 2 vers Google Drive"
+description = "Service libre d'upload automatique de rosbags ROS 2 vers Google Drive, rsync et S3-compatible"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 
-keywords = ["ros2", "rosbag", "robotics", "google-drive", "upload"]
+keywords = ["ros2", "rosbag", "robotics", "google-drive", "s3", "minio", "upload"]
 
 authors = [
   { name = "YVES THOUKAM", email = "thoukamy@gmail.com" },

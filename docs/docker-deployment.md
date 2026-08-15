@@ -137,6 +137,24 @@ meme taille n'est pas uploade une seconde fois.
 Avec rsync, cette verification utilise un petit fichier sidecar
 `<filename>.blake3` envoye a cote du bag.
 
+## Deploiement S3 / MinIO
+
+L’image inclut l’extra S3. Montez les fichiers AWS ou le CA prive en lecture seule dans
+`/etc/freefox/secrets`, ou injectez des variables AWS via votre gestionnaire de secrets. Ne placez
+jamais les cles dans le YAML FreeFox. Exemple:
+
+```yaml
+storage:
+  backend: s3
+s3:
+  bucket: robot-bags
+  endpoint_url: https://minio.example.net
+  addressing_style: path
+  ca_bundle: /etc/freefox/secrets/minio-ca.pem
+```
+
+Les images `linux/amd64` et `linux/arm64` utilisent le meme chemin Python boto3.
+
 ## Deploiement rsync sur un vrai robot
 
 Cette option est utile quand le robot doit envoyer les bags vers un PC de

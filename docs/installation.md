@@ -26,6 +26,16 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
 
+Pour developper et tester le backend AWS S3 / MinIO-compatible:
+
+```bash
+.venv/bin/pip install -e ".[dev,s3]"
+.venv/bin/python -m pytest
+```
+
+Le module boto3 reste optionnel et n'est importe que lorsque `storage.backend: s3` est selectionne.
+Les credentials S3 doivent provenir de sources AWS externes; voir [s3-storage.md](s3-storage.md).
+
 Le package local est installe en mode editable. Quand vous modifiez les fichiers dans `freefox/`, la commande installee utilise directement le code source du repo.
 
 La commande importante est:

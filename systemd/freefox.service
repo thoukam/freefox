@@ -37,6 +37,8 @@ ProtectHome=read-only
 # Environment=FREEFOX_ROBOT_ID=robot-01
 # Environment=FREEFOX_CREDENTIALS=/home/yves/freefox/secrets/client_secret_23814393551-qa7cmg3vg29u97ecm8bfjiaohs3kbu17.apps.googleusercontent.com.json
 Environment=FREEFOX_TOKEN_PATH=/home/yves/freefox/secrets/freefox-token.json
+# Optionnel: variables AWS/profile stockes hors du depot, permissions 0640.
+EnvironmentFile=-/etc/freefox/aws.env
 
 [Install]
 WantedBy=multi-user.target

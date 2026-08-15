@@ -7,6 +7,7 @@ import socket
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 
 import yaml
 
@@ -58,7 +59,8 @@ class UploadConfig:
 
 @dataclass
 class StorageConfig:
-    backend: Literal["gdrive", "rsync"] = "gdrive"
+    backend: Literal["gdrive", "rsync", "s3"] = "gdrive"
+    legacy_backend: Literal["gdrive", "rsync"] | None = None
 
 
 @dataclass
@@ -92,6 +94,48 @@ class RsyncConfig:
 
 
 @dataclass
+class S3Config:
+    bucket: str = ""
+    object_prefix: str = ""
+    region: str = ""
+    endpoint_url: str = ""
+    profile: str = ""
+    addressing_style: Literal["auto", "path", "virtual"] = "auto"
+    ca_bundle: Path | None = None
+    use_date_subfolder: bool = True
+
+    def validate(self, selected: bool = False) -> None:
+        if selected and not self.bucket.strip():
+            raise ValueError("s3.bucket est obligatoire pour le backend s3")
+        prefix = self.object_prefix.strip("/")
+        if any(part in {"", ".", ".."} for part in prefix.split("/")) and prefix:
+            raise ValueError("s3.object_prefix contient un segment invalide")
+        self.object_prefix = prefix
+        if self.endpoint_url:
+            parsed = urlparse(self.endpoint_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("s3.endpoint_url doit etre une URL HTTP(S) absolue")
+        if self.addressing_style not in {"auto", "path", "virtual"}:
+            raise ValueError("s3.addressing_style doit etre auto, path ou virtual")
+        if self.endpoint_url and self.addressing_style == "auto":
+            self.addressing_style = "path"
+        if self.ca_bundle is not None and not self.ca_bundle.is_file():
+            raise ValueError(f"s3.ca_bundle est illisible: {self.ca_bundle}")
+
+    def snapshot(self) -> dict[str, object]:
+        return {
+            "bucket": self.bucket,
+            "object_prefix": self.object_prefix,
+            "region": self.region,
+            "endpoint_url": self.endpoint_url,
+            "profile": self.profile,
+            "addressing_style": self.addressing_style,
+            "ca_bundle": str(self.ca_bundle) if self.ca_bundle else "",
+            "use_date_subfolder": self.use_date_subfolder,
+        }
+
+
+@dataclass
 class CollectorConfig:
     robot_id: str
     watch: WatchConfig
@@ -99,6 +143,7 @@ class CollectorConfig:
     storage: StorageConfig
     drive: DriveConfig
     rsync: RsyncConfig
+    s3: S3Config
     # Path to SQLite queue database
     queue_db: Path = Path("/var/lib/freefox/queue.db")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -145,11 +190,12 @@ class CollectorConfig:
 
         storage_raw = raw.get("storage", {})
         storage_backend = storage_raw.get("backend", raw.get("backend", "gdrive"))
-        if storage_backend not in {"gdrive", "rsync"}:
+        if storage_backend not in {"gdrive", "rsync", "s3"}:
             raise ValueError(f"Backend de stockage inconnu: {storage_backend}")
-        storage = StorageConfig(
-            backend=storage_backend,
-        )
+        legacy_backend = storage_raw.get("legacy_backend")
+        if legacy_backend not in {None, "gdrive", "rsync"}:
+            raise ValueError("storage.legacy_backend doit etre gdrive ou rsync")
+        storage = StorageConfig(backend=storage_backend, legacy_backend=legacy_backend)
 
         drive_raw = raw.get("drive", {})
         drive = DriveConfig(
@@ -179,6 +225,24 @@ class CollectorConfig:
             use_date_subfolder=_as_bool(rsync_raw.get("use_date_subfolder"), True),
         )
 
+        s3_raw = raw.get("s3", {})
+        forbidden = {"access_key", "access_key_id", "secret_key", "secret_access_key", "session_token"}
+        present = sorted(forbidden.intersection(s3_raw))
+        if present:
+            raise ValueError("Les secrets S3 ne sont pas autorises dans YAML: " + ", ".join(present))
+        ca_value = s3_raw.get("ca_bundle")
+        s3 = S3Config(
+            bucket=str(s3_raw.get("bucket", "")).strip(),
+            object_prefix=str(s3_raw.get("object_prefix", "")),
+            region=str(s3_raw.get("region", "")),
+            endpoint_url=str(s3_raw.get("endpoint_url", "")),
+            profile=str(s3_raw.get("profile", "")),
+            addressing_style=str(s3_raw.get("addressing_style", "auto")),
+            ca_bundle=Path(ca_value) if ca_value else None,
+            use_date_subfolder=_as_bool(s3_raw.get("use_date_subfolder"), True),
+        )
+        s3.validate(selected=storage_backend == "s3")
+
         queue_db = Path(raw.get("queue_db", "/var/lib/freefox/queue.db"))
         log_level = raw.get("log_level", "INFO").upper()
 
@@ -189,6 +253,7 @@ class CollectorConfig:
             storage=storage,
             drive=drive,
             rsync=rsync,
+            s3=s3,
             queue_db=queue_db,
             log_level=log_level,
         )

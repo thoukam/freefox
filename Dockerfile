@@ -14,6 +14,6 @@ COPY freefox ./freefox
 COPY scripts ./scripts
 COPY images ./images
 
-RUN chmod -R a+rX /app && pip install .
+RUN chmod -R a+rX /app && pip install ".[s3]"
 
 CMD ["freefox", "--config", "/etc/freefox/config.yaml"]

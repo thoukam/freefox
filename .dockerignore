@@ -1,4 +1,7 @@
 .git/
+Dockerfile*
+.dockerignore
+*.log*
 .venv/
 venv/
 env/
@@ -29,6 +32,7 @@ token.json
 .ruff_cache/
 .coverage
 htmlcov/
+coverage/
 
 .idea/
 .vscode/

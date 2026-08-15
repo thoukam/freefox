@@ -129,7 +129,7 @@ def main() -> None:
     print()
     print(
         f"{'ID':>4}  {'STATUT':<9}  {'PROGRES':>8}  {'DUREE':>8}  "
-        f"{'DEBIT':>24}  {'ESSAI':>5}  {'PROCHAIN':>11}  {'INTEGRITE':>9}  {'BLAKE3':>12}  {'SESSION':>7}  DISTANT"
+        f"{'DEBIT':>24}  {'ESSAI':>5}  {'PROCHAIN':>11}  {'INTEGRITE':>9}  {'BLAKE3':>12}  {'BACKEND':>7}  DISTANT"
     )
     print("-" * 168)
     for entry in queue.recent(limit=args.limit):
@@ -143,7 +143,7 @@ def main() -> None:
             f"{_format_next_retry(entry):>11}  "
             f"{_integrity_status(entry):>9}  "
             f"{_short_hash(entry.blake3_digest):>12}  "
-            f"{'session' if entry.upload_session_uri else '-':>7}  "
+            f"{entry.backend:<7}  "
             f"{_shorten(entry.remote_path)}"
         )
         if entry.error:

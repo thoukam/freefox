@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from freefox.backends import ProgressCallback, SessionCallback, StorageBackend
+from freefox.backends import Inspection, ProgressCallback, SessionCallback, StorageBackend
 from freefox.integrity import calculate_blake3
 
 logger = logging.getLogger(__name__)
@@ -77,6 +77,11 @@ class RsyncBackend(StorageBackend):
             check=False,
         )
         return proc.returncode == 0
+
+    def inspect(self, remote_path: str, blake3_digest: str, size_bytes: int) -> Inspection:
+        if blake3_digest and self.find_duplicate(remote_path, blake3_digest, size_bytes):
+            return Inspection.IDENTICAL
+        return Inspection.CONFLICT if self.exists(remote_path) else Inspection.MISSING
 
     def find_duplicate(
         self,
