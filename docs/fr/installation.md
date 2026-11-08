@@ -75,6 +75,16 @@ Toutes les options sont commentées dans
 [`config/config.example.yaml`](../../config/config.example.yaml). Les fichiers `config/local*.yaml`
 sont ignorés par git.
 
+## Validation de la configuration
+
+Avant de lancer le service, vous pouvez valider le fichier de configuration et tester la connectivité au backend de stockage :
+
+```bash
+freefox --config config/local.gdrive.yaml --check-config
+```
+
+Cette commande vérifie la validité du schéma YAML, s'assure que `watch.directory` existe et est accessible en lecture, et teste que le backend de stockage répond (`exists("freefox-check")`).
+
 ## Test Google Drive
 
 ```bash
