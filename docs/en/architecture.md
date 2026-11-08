@@ -20,7 +20,7 @@ backend.
           │                                       │                    └─ s3.py                    │
           └───────────────────────────────────────┼───────────────────────────────────────────────┘
                                                   │ read-only
-                                         scripts/dashboard.py (separate process, HTTP :8765)
+                                         freefox-dashboard (separate process, HTTP :8765)
 ```
 
 `freefox/service.py` wires everything together. It is also the `freefox` CLI entry point.
@@ -36,7 +36,8 @@ backend.
 | `integrity.py` | Streaming BLAKE3. |
 | `backends/__init__.py` | Provider-neutral contract: `StorageBackend` protocol, `Inspection` enum and the error hierarchy. |
 | `backends/factory.py` | `BackendRegistry`: lazily builds and caches one backend per destination snapshot. |
-| `scripts/dashboard.py` | Standalone HTTP server, standard library only. It reads the same SQLite file and serves `/` and `/api/status`. |
+| `dashboard.py` | `freefox-dashboard` command. Standalone HTTP server, standard library only. It reads the same SQLite file and serves `/` and `/api/status`. |
+| `status.py` | `freefox-status` command: prints the queue as a table in the terminal. |
 
 ## Lifecycle of a bag
 

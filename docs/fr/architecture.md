@@ -20,7 +20,7 @@ un backend.
           │                                          │                    └─ s3.py                 │
           └──────────────────────────────────────────┼────────────────────────────────────────────┘
                                                      │ lecture seule
-                                         scripts/dashboard.py (processus séparé, HTTP :8765)
+                                         freefox-dashboard (processus séparé, HTTP :8765)
 ```
 
 `freefox/service.py` assemble le tout. C'est aussi le point d'entrée de la CLI `freefox`.
@@ -36,7 +36,8 @@ un backend.
 | `integrity.py` | BLAKE3 en streaming. |
 | `backends/__init__.py` | Contrat indépendant du fournisseur : protocole `StorageBackend`, enum `Inspection` et hiérarchie d'erreurs. |
 | `backends/factory.py` | `BackendRegistry` : construit à la demande et met en cache un backend par snapshot de destination. |
-| `scripts/dashboard.py` | Serveur HTTP autonome, bibliothèque standard uniquement. Lit la même base SQLite et sert `/` et `/api/status`. |
+| `dashboard.py` | Commande `freefox-dashboard`. Serveur HTTP autonome, bibliothèque standard uniquement. Lit la même base SQLite et sert `/` et `/api/status`. |
+| `status.py` | Commande `freefox-status` : affiche la file sous forme de tableau dans le terminal. |
 
 ## Cycle de vie d'un bag
 

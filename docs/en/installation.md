@@ -103,7 +103,7 @@ uploads it to `<robot_id>/<YYYY-MM-DD>/<filename>`, for example `pc-test/2026-06
 Inspect the queue:
 
 ```bash
-.venv/bin/python scripts/queue_status.py /var/lib/freefox/queue.db
+.venv/bin/freefox-status /var/lib/freefox/queue.db
 # or
 sqlite3 -header -column /var/lib/freefox/queue.db \
   "SELECT id, local_path, remote_path, status, retries, error FROM queue;"
@@ -150,7 +150,7 @@ The database must persist across restarts and stay protected, because session UR
 ## Local web dashboard
 
 ```bash
-.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
+.venv/bin/freefox-dashboard --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
 ```
 
 Open `http://127.0.0.1:8765`. To reach it from another PC on the network, use `--host 0.0.0.0` and

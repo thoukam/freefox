@@ -64,6 +64,17 @@ Compatible avec les deux formats de bags ROS 2 : **`.mcap`** et **`.db3`**.
 
 ## Démarrage rapide
 
+### pip
+
+```bash
+pip install "freefox[s3]"        # retirez [s3] si vous n'utilisez pas S3 / MinIO
+freefox --config config.yaml     # le service d'upload
+freefox-dashboard --config config.yaml --host 0.0.0.0   # dashboard sur :8765
+freefox-status /var/lib/freefox/queue.db                # état de la file dans le terminal
+```
+
+Partez de [`config/config.example.yaml`](config/config.example.yaml).
+
 ### Docker
 
 ```bash
@@ -96,7 +107,7 @@ python3 -m venv .venv
 ### Dashboard
 
 ```bash
-.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
+.venv/bin/freefox-dashboard --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
 ```
 
 Utilisez `--host 0.0.0.0` pour y accéder depuis un autre PC du réseau. Le dashboard n'a pas encore
@@ -139,7 +150,7 @@ Tous les guides existent en français ([`docs/fr/`](docs/fr/)) et en anglais ([`
 ## Outils
 
 ```bash
-.venv/bin/python scripts/queue_status.py /var/lib/freefox/queue.db   # état de la file
+.venv/bin/freefox-status /var/lib/freefox/queue.db   # état de la file
 .venv/bin/python scripts/gdrive_smoke.py --config config/local.gdrive.yaml
 .venv/bin/python scripts/s3_smoke.py --config config/local.s3.yaml --file /tmp/test.mcap
 .venv/bin/python -m pytest

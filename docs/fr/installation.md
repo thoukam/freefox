@@ -106,7 +106,7 @@ file, puis lance l'upload vers `<robot_id>/<AAAA-MM-JJ>/<fichier>`, par exemple
 Inspecter la file :
 
 ```bash
-.venv/bin/python scripts/queue_status.py /var/lib/freefox/queue.db
+.venv/bin/freefox-status /var/lib/freefox/queue.db
 # ou
 sqlite3 -header -column /var/lib/freefox/queue.db \
   "SELECT id, local_path, remote_path, status, retries, error FROM queue;"
@@ -153,7 +153,7 @@ La base doit persister entre les redémarrages et rester protégée, car les URI
 ## Dashboard web local
 
 ```bash
-.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
+.venv/bin/freefox-dashboard --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
 ```
 
 Ouvrir `http://127.0.0.1:8765`. Pour y accéder depuis un autre PC du réseau, utilisez

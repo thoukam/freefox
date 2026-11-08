@@ -194,7 +194,7 @@ distant.
 docker compose up -d
 docker compose logs -f freefox
 ssh user@IP_DE_DESTINATION "find /data/freefox -type f | sort | tail -20"
-docker compose exec freefox python scripts/queue_status.py /var/lib/freefox/queue.db --limit 10
+docker compose exec freefox freefox-status /var/lib/freefox/queue.db --limit 10
 ```
 
 Pour un transfert valide, la colonne `STATUT` affiche `done` et la colonne `INTEGRITE` affiche `OK`.
@@ -271,7 +271,7 @@ sudo systemctl start freefox
 | `docker compose logs -f freefox` | Logs du service |
 | `docker compose logs -f dashboard` | Logs du dashboard |
 | `docker compose exec freefox sh` | Shell dans le conteneur |
-| `docker compose exec freefox python scripts/queue_status.py /var/lib/freefox/queue.db` | État de la file |
+| `docker compose exec freefox freefox-status /var/lib/freefox/queue.db` | État de la file |
 
 ## Publication GHCR
 

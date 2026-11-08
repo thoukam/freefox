@@ -37,8 +37,8 @@ Scripts utiles :
 | Commande | Rôle |
 |---|---|
 | `scripts/local_smoke.py` | Test de bout en bout sur un dossier local, sans compte cloud |
-| `scripts/dashboard.py --config <cfg>` | Dashboard local sur `http://127.0.0.1:8765` |
-| `scripts/queue_status.py <queue.db>` | Inspecter la file SQLite |
+| `freefox-dashboard --config <cfg>` | Dashboard local sur `http://127.0.0.1:8765` |
+| `freefox-status <queue.db>` | Inspecter la file SQLite |
 | `scripts/gdrive_smoke.py`, `scripts/s3_smoke.py` | Vérifications réelles, à lancer manuellement |
 
 Lisez [docs/fr/architecture.md](docs/fr/architecture.md) avant de toucher à la file, aux workers ou
@@ -77,6 +77,10 @@ docs: traduire le guide Docker en anglais
   (voir `s3._safe_message`).
 - Préservez les garanties : aucune perte de données, aucun écrasement silencieux, retries idempotents.
 - Préférez un code clair à des one-liners astucieux : le code est bien plus souvent lu qu'écrit.
+
+## Publier une version
+
+Mainteneurs : voir [docs/fr/releasing.md](docs/fr/releasing.md).
 
 ## Signaler une faille de sécurité
 
