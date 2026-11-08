@@ -8,7 +8,10 @@ import pytest
 
 class FakeClientError(Exception):
     def __init__(self, code: str, message: str = "fake error", status: int = 400):
-        self.response = {"Error": {"Code": code, "Message": message}, "ResponseMetadata": {"HTTPStatusCode": status}}
+        self.response = {
+            "Error": {"Code": code, "Message": message},
+            "ResponseMetadata": {"HTTPStatusCode": status},
+        }
         super().__init__(message)
 
 
@@ -35,7 +38,11 @@ class FakeS3Client:
     def put_object(self, **kwargs):
         self._call("put_object", kwargs)
         body = kwargs["Body"].read() if hasattr(kwargs["Body"], "read") else kwargs["Body"]
-        self.objects[(kwargs["Bucket"], kwargs["Key"])] = {"ContentLength": len(body), "Metadata": kwargs.get("Metadata", {}), "Body": body}
+        self.objects[(kwargs["Bucket"], kwargs["Key"])] = {
+            "ContentLength": len(body),
+            "Metadata": kwargs.get("Metadata", {}),
+            "Body": body,
+        }
         return {"ETag": md5(body, usedforsecurity=False).hexdigest()}
 
     def create_multipart_upload(self, **kwargs):
@@ -57,14 +64,24 @@ class FakeS3Client:
         if kwargs["UploadId"] not in self.uploads:
             raise FakeClientError("NoSuchUpload", "missing", 404)
         parts = self.uploads[kwargs["UploadId"]]["parts"]
-        return {"Parts": [{"PartNumber": n, "ETag": e, "Size": len(b)} for n, (e, b) in sorted(parts.items())]}
+        return {
+            "Parts": [
+                {"PartNumber": n, "ETag": e, "Size": len(b)} for n, (e, b) in sorted(parts.items())
+            ]
+        }
 
     def complete_multipart_upload(self, **kwargs):
         self._call("complete_multipart_upload", kwargs)
         upload = self.uploads.pop(kwargs["UploadId"])
-        body = b"".join(upload["parts"][p["PartNumber"]][1] for p in kwargs["MultipartUpload"]["Parts"])
+        body = b"".join(
+            upload["parts"][p["PartNumber"]][1] for p in kwargs["MultipartUpload"]["Parts"]
+        )
         request = upload["request"]
-        self.objects[(kwargs["Bucket"], kwargs["Key"])] = {"ContentLength": len(body), "Metadata": request.get("Metadata", {}), "Body": body}
+        self.objects[(kwargs["Bucket"], kwargs["Key"])] = {
+            "ContentLength": len(body),
+            "Metadata": request.get("Metadata", {}),
+            "Body": body,
+        }
         return {"ETag": "multipart"}
 
     def abort_multipart_upload(self, **kwargs):

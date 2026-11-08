@@ -6,6 +6,7 @@ from pathlib import Path
 
 from blake3 import blake3
 
+
 def calculate_blake3(path: Path, chunk_size: int = 8 * 1024 * 1024) -> str:
     """Calcule le BLAKE3 d'un fichier sans le charger entierement en RAM."""
     hasher = blake3()

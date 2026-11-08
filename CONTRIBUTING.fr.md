@@ -54,7 +54,8 @@ Lisez [docs/fr/architecture.md](docs/fr/architecture.md) avant de toucher à la 
    ou la configuration change. Les documents existent en français et en anglais (`X.fr.md` / `X.md`,
    `docs/fr/` / `docs/en/`). Mettez à jour les deux si vous le pouvez, sinon indiquez dans la PR
    qu'une traduction manque et quelqu'un vous aidera.
-5. Vérifiez que `pytest` passe.
+5. Vérifiez que les contrôles passent : `ruff format freefox scripts tests`, `ruff check freefox scripts tests`
+   et `pytest`. La CI lance les mêmes commandes.
 6. Ouvrez la pull request et remplissez le modèle.
 
 ### Messages de commit
@@ -69,6 +70,7 @@ docs: traduire le guide Docker en anglais
 
 ### Règles de code
 
+- Le code est formaté avec [ruff](https://docs.astral.sh/ruff/) (lignes de 100 caractères). Lancez `ruff format` avant de commiter.
 - Ciblez Python 3.10 et utilisez des annotations de type sur les fonctions publiques.
 - Les SDK optionnels (boto3, …) s'importent à l'intérieur du backend, au moment où il est utilisé.
 - Ne journalisez et ne stockez jamais de secrets. Masquez les messages d'erreur des fournisseurs

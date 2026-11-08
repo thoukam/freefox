@@ -30,6 +30,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,s3]"
 
+      - name: Lint and format check
+        run: |
+          ruff check freefox scripts tests
+          ruff format --check freefox scripts tests
+
       - name: Run tests
         run: python -m pytest -v
 

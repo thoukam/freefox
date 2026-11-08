@@ -50,7 +50,8 @@ Read [docs/en/architecture.md](docs/en/architecture.md) before touching the queu
 4. Update the docs and `CHANGELOG.md` (under *Unreleased*) when behaviour or configuration changes.
    Documents exist in English and French (`X.md` / `X.fr.md`, `docs/en/` / `docs/fr/`). Update both
    if you can, or say in the PR that a translation is missing and someone will help.
-5. Make sure `pytest` passes.
+5. Make sure the checks pass: `ruff format freefox scripts tests`, `ruff check freefox scripts tests`
+   and `pytest`. The CI runs the same commands.
 6. Open the pull request and fill in the template.
 
 ### Commit messages
@@ -65,6 +66,7 @@ docs: translate the Docker guide to English
 
 ### Code guidelines
 
+- Code is formatted with [ruff](https://docs.astral.sh/ruff/) (line length 100). Run `ruff format` before committing.
 - Target Python 3.10 and use type hints on public functions.
 - Optional SDKs (boto3, …) are imported lazily, inside the backend.
 - Never log or store secrets. Redact provider error messages (see `s3._safe_message`).

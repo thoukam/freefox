@@ -17,8 +17,8 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +151,8 @@ class FileWatcher:
         )
         # Attempt to use watchdog for inotify events
         try:
-            from watchdog.observers import Observer
             from watchdog.events import FileSystemEventHandler
+            from watchdog.observers import Observer
 
             watcher = self
 

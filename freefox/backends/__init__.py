@@ -1,10 +1,12 @@
 """Provider-neutral storage backend contracts."""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 ProgressCallback = Callable[[float, int], None]
 SessionCallback = Callable[[str], None]

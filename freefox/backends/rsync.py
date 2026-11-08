@@ -10,7 +10,6 @@ import tempfile
 from pathlib import Path
 
 from freefox.backends import Inspection, ProgressCallback, SessionCallback, StorageBackend
-from freefox.integrity import calculate_blake3
 
 logger = logging.getLogger(__name__)
 

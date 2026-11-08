@@ -7,11 +7,11 @@ import os
 from pathlib import Path
 
 from google.auth.transport.requests import AuthorizedSession, Request
-from googleapiclient.errors import HttpError
-from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from freefox.backends import Inspection, ProgressCallback, SessionCallback, StorageBackend
 
@@ -47,9 +47,7 @@ def _build_credentials(credentials_file: Path):
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(credentials_file), _SCOPES
-                )
+                flow = InstalledAppFlow.from_client_secrets_file(str(credentials_file), _SCOPES)
                 creds = flow.run_local_server(port=0)
 
             _TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -153,9 +151,7 @@ class GoogleDriveBackend(StorageBackend):
 
         files = resp.get("files", [])
         candidates = [
-            file["id"]
-            for file in files
-            if file.get("id") and file["id"] not in ignored_folder_ids
+            file["id"] for file in files if file.get("id") and file["id"] not in ignored_folder_ids
         ]
         if candidates:
             folder_id = candidates[0]
@@ -349,9 +345,7 @@ class GoogleDriveBackend(StorageBackend):
                     raise RuntimeError("Drive resumable upload session expired")
 
                 if response.status_code in {500, 502, 503, 504}:
-                    raise RuntimeError(
-                        f"transient Drive upload error: HTTP {response.status_code}"
-                    )
+                    raise RuntimeError(f"transient Drive upload error: HTTP {response.status_code}")
 
                 raise RuntimeError(
                     f"Drive upload failed: HTTP {response.status_code}: {response.text}"
@@ -407,13 +401,10 @@ class GoogleDriveBackend(StorageBackend):
         if response.status_code in {404, 410}:
             raise RuntimeError("Drive resumable upload session expired")
         raise RuntimeError(
-            f"Could not query Drive upload session: "
-            f"HTTP {response.status_code}: {response.text}"
+            f"Could not query Drive upload session: HTTP {response.status_code}: {response.text}"
         )
 
-    def _query_completed_session(
-        self, session_uri: str, file_size: int
-    ) -> dict[str, str]:
+    def _query_completed_session(self, session_uri: str, file_size: int) -> dict[str, str]:
         response = self._http.put(
             session_uri,
             headers={
