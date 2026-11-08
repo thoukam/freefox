@@ -73,7 +73,7 @@ where = ["."]
 include = ["freefox*"]
 
 [tool.setuptools.package-data]
-freefox = ["assets/*.png"]
+freefox = ["assets/*.png", "assets/*.html"]
 
 [tool.setuptools.dynamic]
 version = { attr = "freefox.__version__" }

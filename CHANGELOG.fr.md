@@ -26,6 +26,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
   L'entrée est désormais réessayée avec backoff et l'erreur est enregistrée.
 
 ### Modifié
+- HTML/CSS/JS du dashboard extrait du code Python vers `freefox/assets/dashboard.html` et empaqueté via setuptools.
 - Code formaté et vérifié avec ruff, contrôlé par la CI. Le worker d'upload et la logique multipart
   S3 sont découpés en petites fonctions documentées.
 - Les tests couvrent maintenant la reprise multipart S3, les sessions expirées, les conflits et la
