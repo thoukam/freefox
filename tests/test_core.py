@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 import pytest
 
-from freefox.queue import UploadQueue, Status
-from freefox.watcher import StabilityTracker
-from freefox.integrity import calculate_blake3
-from freefox.config import CollectorConfig
 from freefox.backends.rsync import _parse_progress_percent
-
+from freefox.config import CollectorConfig
+from freefox.integrity import calculate_blake3
+from freefox.queue import Status, UploadQueue
+from freefox.watcher import StabilityTracker
 
 # ──────────────────────────────────────────────────────────────────────
 # Queue tests
@@ -139,6 +137,7 @@ def test_max_retries_marks_failed(queue, tmp_path):
         if entry is None:
             # not yet past retry window in fast test — force it
             import sqlite3
+
             conn = sqlite3.connect(str(queue._path))
             conn.execute("UPDATE queue SET next_retry_at=0 WHERE status='queued'")
             conn.commit()

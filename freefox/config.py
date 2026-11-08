@@ -41,7 +41,7 @@ class UploadConfig:
     chunk_size: int = 256 * 1024 * 8  # 2 MiB
     # Retry policy
     max_retries: int = 10
-    retry_backoff_base: float = 2.0   # seconds, exponential
+    retry_backoff_base: float = 2.0  # seconds, exponential
     retry_backoff_max: float = 300.0  # 5 min cap
     # Delay before retrying quota-related provider errors.
     quota_retry_delay: float = 60.0
@@ -149,7 +149,7 @@ class CollectorConfig:
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "CollectorConfig":
+    def from_yaml(cls, path: str | Path) -> CollectorConfig:
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Config not found: {path}")
@@ -159,11 +159,8 @@ class CollectorConfig:
 
         # Allow env-var override for robot_id (useful in containers / CI)
         robot_id = (
-            os.environ.get("FREEFOX_ROBOT_ID")
-            or os.environ.get("ROSBAG_COLLECTOR_ROBOT_ID")
-        ) or raw.get(
-            "robot_id", socket.gethostname()
-        )
+            os.environ.get("FREEFOX_ROBOT_ID") or os.environ.get("ROSBAG_COLLECTOR_ROBOT_ID")
+        ) or raw.get("robot_id", socket.gethostname())
 
         watch_raw = raw.get("watch", {})
         watch = WatchConfig(
@@ -226,10 +223,18 @@ class CollectorConfig:
         )
 
         s3_raw = raw.get("s3", {})
-        forbidden = {"access_key", "access_key_id", "secret_key", "secret_access_key", "session_token"}
+        forbidden = {
+            "access_key",
+            "access_key_id",
+            "secret_key",
+            "secret_access_key",
+            "session_token",
+        }
         present = sorted(forbidden.intersection(s3_raw))
         if present:
-            raise ValueError("Les secrets S3 ne sont pas autorises dans YAML: " + ", ".join(present))
+            raise ValueError(
+                "Les secrets S3 ne sont pas autorises dans YAML: " + ", ".join(present)
+            )
         ca_value = s3_raw.get("ca_bundle")
         s3 = S3Config(
             bucket=str(s3_raw.get("bucket", "")).strip(),

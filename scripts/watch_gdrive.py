@@ -21,7 +21,7 @@ from freefox.worker import UploadWorkerPool
 def _shorten(value: str, width: int = 48) -> str:
     if len(value) <= width:
         return value
-    return "..." + value[-(width - 3):]
+    return "..." + value[-(width - 3) :]
 
 
 def _log_recent_queue(queue: UploadQueue) -> None:

@@ -15,7 +15,7 @@ from freefox.queue import UploadQueue
 def _shorten(value: str, width: int = 52) -> str:
     if len(value) <= width:
         return value
-    return "..." + value[-(width - 3):]
+    return "..." + value[-(width - 3) :]
 
 
 def _short_hash(value: str) -> str:
@@ -42,9 +42,7 @@ def _format_rate(entry) -> str:
         return "-"
     sent = entry.size_bytes
     if entry.status.value != "done":
-        sent = entry.uploaded_bytes or int(
-            entry.size_bytes * (entry.progress_percent / 100.0)
-        )
+        sent = entry.uploaded_bytes or int(entry.size_bytes * (entry.progress_percent / 100.0))
     bps = sent / elapsed
     mib = bps / 1024 / 1024
     mbps = bps * 8 / 1000 / 1000

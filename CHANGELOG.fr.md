@@ -15,7 +15,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 - Guide d'architecture (`docs/fr/architecture.md`, `docs/en/architecture.md`).
 - Workflow de CI qui lance les tests sur Python 3.10 à 3.12.
 
+### Corrigé
+- Un thread d'upload ne meurt plus en silence quand le calcul de l'empreinte BLAKE3 ou la création
+  du backend échoue (par exemple une config S3 invalide ou un bag supprimé pendant la lecture).
+  L'entrée est désormais réessayée avec backoff et l'erreur est enregistrée.
+
 ### Modifié
+- Code formaté et vérifié avec ruff, contrôlé par la CI. Le worker d'upload et la logique multipart
+  S3 sont découpés en petites fonctions documentées.
+- Les tests couvrent maintenant la reprise multipart S3, les sessions expirées, les conflits et la
+  politique d'erreurs du worker.
 - L'unité `systemd/freefox.service` est maintenant générique (`/etc/freefox/config.yaml`, `/var/lib/freefox`).
 - Guides déplacés dans `docs/en/` et `docs/fr/`, et guides Docker et Google Drive réorganisés.
 - Feuille de route du README présentée par phases.
