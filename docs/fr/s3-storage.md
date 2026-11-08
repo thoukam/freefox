@@ -61,4 +61,4 @@ Le script confirme l’objet par taille et BLAKE3. Utilisez un préfixe de test 
 1. Lancez FreeFox avec `storage.backend: s3` et déposez un fichier de plus de 50 MiB.
 2. Arrêtez le service pendant l’upload (`systemctl stop freefox` ou `Ctrl+C`).
 3. Relancez-le: l’entrée repasse en file et reprend à partir des parts déjà confirmées.
-4. Vérifiez avec `scripts/queue_status.py` que l’entrée finit en `done`.
+4. Vérifiez avec `freefox-status` que l’entrée finit en `done`.

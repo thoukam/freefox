@@ -9,6 +9,11 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 ## [Non publié]
 
 ### Ajouté
+- Publication sur PyPI : `pip install freefox` (avec l'extra `s3` pour S3 / MinIO). Un workflow
+  publie chaque release GitHub via le Trusted Publishing PyPI.
+- Commandes `freefox-dashboard` et `freefox-status`, installées avec le paquet. Les scripts
+  `scripts/dashboard.py` et `scripts/queue_status.py` fonctionnent toujours.
+- Guide de publication (`docs/fr/releasing.md`, `docs/en/releasing.md`).
 - Versions française et anglaise de tous les documents : `*.md` / `*.fr.md` à la racine,
   `docs/en/` et `docs/fr/` pour les guides.
 - Guide de contribution, code de conduite, politique de sécurité, modèles d'issues et de pull requests.
@@ -28,7 +33,8 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 - L'unité `systemd/freefox.service` est maintenant générique (`/etc/freefox/config.yaml`, `/var/lib/freefox`).
 - Guides déplacés dans `docs/en/` et `docs/fr/`, et guides Docker et Google Drive réorganisés.
 - Feuille de route du README présentée par phases.
-- Métadonnées du package : classifiers, URLs du projet, version alignée sur le tag `v0.2.0`.
+- Métadonnées du package : licence SPDX, classifiers, URLs du projet, version définie à un seul
+  endroit. Le logo du dashboard est inclus dans le paquet (31 Ko) et l'image Docker ne copie plus `images/`.
 
 ## [0.2.0] - 2026-08-15
 

@@ -35,8 +35,8 @@ Useful scripts:
 | Command | Purpose |
 |---|---|
 | `scripts/local_smoke.py` | End-to-end run against a local folder, no cloud account needed |
-| `scripts/dashboard.py --config <cfg>` | Local dashboard on `http://127.0.0.1:8765` |
-| `scripts/queue_status.py <queue.db>` | Inspect the SQLite queue |
+| `freefox-dashboard --config <cfg>` | Local dashboard on `http://127.0.0.1:8765` |
+| `freefox-status <queue.db>` | Inspect the SQLite queue |
 | `scripts/gdrive_smoke.py`, `scripts/s3_smoke.py` | Opt-in live checks against real storage |
 
 Read [docs/en/architecture.md](docs/en/architecture.md) before touching the queue, the workers or a backend.
@@ -72,6 +72,10 @@ docs: translate the Docker guide to English
 - Never log or store secrets. Redact provider error messages (see `s3._safe_message`).
 - Keep the safety guarantees: no data loss, no silent overwrite, idempotent retries.
 - Prefer clear, readable code over clever one-liners. Code is read far more often than it is written.
+
+## Releasing
+
+Maintainers: see [docs/en/releasing.md](docs/en/releasing.md).
 
 ## Reporting security issues
 

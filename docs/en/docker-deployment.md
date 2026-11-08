@@ -193,7 +193,7 @@ sidecar next to each bag, so it can detect duplicates without reading the remote
 docker compose up -d
 docker compose logs -f freefox
 ssh user@DESTINATION_IP "find /data/freefox -type f | sort | tail -20"
-docker compose exec freefox python scripts/queue_status.py /var/lib/freefox/queue.db --limit 10
+docker compose exec freefox freefox-status /var/lib/freefox/queue.db --limit 10
 ```
 
 For a successful transfer, the `STATUT` (status) column shows `done` and the `INTEGRITE` (integrity) column shows `OK`.
@@ -269,7 +269,7 @@ sudo systemctl start freefox
 | `docker compose logs -f freefox` | Service logs |
 | `docker compose logs -f dashboard` | Dashboard logs |
 | `docker compose exec freefox sh` | Shell inside the container |
-| `docker compose exec freefox python scripts/queue_status.py /var/lib/freefox/queue.db` | Queue status |
+| `docker compose exec freefox freefox-status /var/lib/freefox/queue.db` | Queue status |
 
 ## GHCR publishing
 

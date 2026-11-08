@@ -312,10 +312,10 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"</pre></div></div></div>
         <div class="step"><div class="sn">2</div><div class="sb2"><div class="stitle">Configurer</div><div class="sdesc"><pre>cp config/config.example.yaml config/local.yaml
 nano config/local.yaml  <span class="cm"># renseigner watch.directory et drive.target_folder_id</span></pre></div></div></div>
-        <div class="step"><div class="sn">3</div><div class="sb2"><div class="stitle">Lancer le dashboard local</div><div class="sdesc"><pre>.venv/bin/python scripts/dashboard.py \
+        <div class="step"><div class="sn">3</div><div class="sb2"><div class="stitle">Lancer le dashboard local</div><div class="sdesc"><pre>.venv/bin/freefox-dashboard \
   --config config/local.yaml \
   --host 127.0.0.1 --port 8765</pre><p style="margin-top:9px">Puis ouvrir <code>http://127.0.0.1:8765</code></p></div></div></div>
-        <div class="step"><div class="sn">4</div><div class="sb2"><div class="stitle">Accès depuis un autre PC du réseau</div><div class="sdesc"><pre>.venv/bin/python scripts/dashboard.py \
+        <div class="step"><div class="sn">4</div><div class="sb2"><div class="stitle">Accès depuis un autre PC du réseau</div><div class="sdesc"><pre>.venv/bin/freefox-dashboard \
   --config config/local.yaml \
   --host 0.0.0.0 --port 8765</pre><p style="margin-top:9px">Depuis le PC client : <code>http://IP_DU_ROBOT:8765</code></p></div></div></div>
       </div>
@@ -431,7 +431,7 @@ s3:
     <section id="dashboard">
       <div class="sec-hd"><div class="sec-icon">📊</div><h2>Dashboard local</h2></div>
       <p>Interface web légère intégrée. Aucune dépendance supplémentaire.</p>
-      <pre>.venv/bin/python scripts/dashboard.py \
+      <pre>.venv/bin/freefox-dashboard \
   --config config/local.yaml \
   --host 127.0.0.1 --port 8765 \
   --open  <span class="cm"># ouvre le navigateur automatiquement</span></pre>
@@ -454,7 +454,7 @@ s3:
       <pre>FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
 .venv/bin/python scripts/gdrive_smoke.py --config config/local.gdrive.yaml</pre>
       <h3>Inspecter la file SQLite</h3>
-      <pre>.venv/bin/python scripts/queue_status.py /var/lib/freefox/queue.db</pre>
+      <pre>.venv/bin/freefox-status /var/lib/freefox/queue.db</pre>
     </section>
     <div class="div"></div>
 

@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "freefox"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Reliable, resumable upload of ROS 2 bags from robots to Google Drive, rsync/NAS and S3-compatible storage"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 
 keywords = ["ros2", "rosbag", "mcap", "robotics", "data-collection", "google-drive", "s3", "minio", "rsync", "upload", "fleet"]
@@ -16,22 +17,22 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Robotics",
     "Topic :: System :: Archiving :: Backup",
 ]
 
 authors = [
-  { name = "YVES THOUKAM", email = "thoukamy@gmail.com" },
+  { name = "Yves Thoukam", email = "thoukamy@gmail.com" },
 ]
 
 maintainers = [
-  { name = "YVES THOUKAM", email = "thoukamy@gmail.com" },
+  { name = "Yves Thoukam", email = "thoukamy@gmail.com" },
 ]
 
 dependencies = [
@@ -55,6 +56,8 @@ dev = [
     "pytest>=7.4",
     "pytest-timeout>=2.1",
     "ruff>=0.6",
+    "build>=1.0",
+    "twine>=5.0",
 ]
 s3 = [
     "boto3>=1.28",
@@ -62,10 +65,18 @@ s3 = [
 
 [project.scripts]
 freefox = "freefox.service:main"
+freefox-dashboard = "freefox.dashboard:main"
+freefox-status = "freefox.status:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["freefox*"]
+
+[tool.setuptools.package-data]
+freefox = ["assets/*.png"]
+
+[tool.setuptools.dynamic]
+version = { attr = "freefox.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

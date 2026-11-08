@@ -18,8 +18,7 @@ services:
     image: ${FREEFOX_IMAGE:-ghcr.io/thoukam/freefox:latest}
     command:
       [
-        "python",
-        "scripts/dashboard.py",
+        "freefox-dashboard",
         "--config",
         "/etc/freefox/config.yaml",
         "--host",

@@ -59,4 +59,4 @@ The script checks the object's size and BLAKE3. Use an isolated test prefix.
 1. Run FreeFox with `storage.backend: s3` and drop in a file larger than 50 MiB.
 2. Stop the service during the upload (`systemctl stop freefox` or `Ctrl+C`).
 3. Start it again: the entry is requeued and continues from the parts already confirmed.
-4. Check with `scripts/queue_status.py` that the entry ends up `done`.
+4. Check with `freefox-status` that the entry ends up `done`.
