@@ -7,6 +7,7 @@ import logging
 import signal
 import sys
 from pathlib import Path
+from typing import TextIO
 
 from freefox.backends.factory import BackendRegistry, _snapshot
 from freefox.config import CollectorConfig
@@ -107,6 +108,55 @@ class CollectorService:
         sys.exit(0)
 
 
+def check_config(
+    config_path: str | Path,
+    registry: BackendRegistry | None = None,
+    stream: TextIO | None = None,
+) -> int:
+    if stream is None:
+        stream = sys.stdout
+    path = Path(config_path)
+    print(f"Checking configuration: {path}", file=stream)
+
+    # 1. Load and validate the YAML
+    try:
+        config = CollectorConfig.from_yaml(path)
+        print("  [OK] YAML syntax and schema valid", file=stream)
+    except Exception as exc:
+        print(f"  [FAIL] Configuration error: {exc}", file=sys.stderr)
+        return 1
+
+    # 2. Check that watch.directory exists and is readable
+    watch_dir = config.watch.directory
+    try:
+        if not watch_dir.exists():
+            print(f"  [FAIL] Watch directory does not exist: {watch_dir}", file=sys.stderr)
+            return 1
+        if not watch_dir.is_dir():
+            print(f"  [FAIL] Watch path is not a directory: {watch_dir}", file=sys.stderr)
+            return 1
+        list(watch_dir.iterdir())
+        print(f"  [OK] Watch directory exists and is readable: {watch_dir}", file=stream)
+    except Exception as exc:
+        print(f"  [FAIL] Watch directory not readable ({watch_dir}): {exc}", file=sys.stderr)
+        return 1
+
+    # 3. Build backend and call exists("freefox-check") on it
+    backend_name = config.storage.backend
+    try:
+        if registry is None:
+            registry = BackendRegistry(config)
+        backend = registry.get(backend_name, _snapshot(config, backend_name))
+        backend.exists("freefox-check")
+        print(f"  [OK] Storage backend '{backend_name}' reachable", file=stream)
+    except Exception as exc:
+        print(f"  [FAIL] Storage backend check failed ({backend_name}): {exc}", file=sys.stderr)
+        return 1
+
+    print("Configuration check passed.", file=stream)
+    return 0
+
+
 def main() -> None:
     import argparse
 
@@ -115,7 +165,16 @@ def main() -> None:
     )
     parser.add_argument("-c", "--config", default="/etc/freefox/config.yaml")
     parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    parser.add_argument(
+        "--check-config",
+        action="store_true",
+        help="validate the config and test the backend without starting the service",
+    )
     args = parser.parse_args()
+
+    if args.check_config:
+        sys.exit(check_config(args.config))
+
     config = CollectorConfig.from_yaml(args.config)
     if args.log_level:
         config.log_level = args.log_level

@@ -73,6 +73,16 @@ queue_db: /var/lib/freefox/queue.db
 Every option is commented in [`config/config.example.yaml`](../../config/config.example.yaml).
 `config/local*.yaml` files are ignored by git.
 
+## Validating the configuration
+
+Before running FreeFox, validate your configuration file and test connectivity to the storage backend:
+
+```bash
+freefox --config config/local.gdrive.yaml --check-config
+```
+
+This verifies that the YAML schema is valid, ensures `watch.directory` exists and is readable, and tests that the storage backend is reachable (`exists("freefox-check")`).
+
 ## Google Drive check
 
 ```bash

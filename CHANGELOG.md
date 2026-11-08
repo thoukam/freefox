@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- `--check-config` CLI option to validate configuration schema, ensure `watch.directory` exists and is readable, and test storage backend connectivity without starting the service.
 - Published on PyPI: `pip install freefox` (with the `s3` extra for S3 / MinIO). A release workflow
   uploads each GitHub release through PyPI Trusted Publishing.
 - `freefox-dashboard` and `freefox-status` commands, installed with the package. The
