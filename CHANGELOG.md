@@ -25,6 +25,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   The entry is now retried with backoff and the error is recorded.
 
 ### Changed
+- Dashboard HTML/CSS/JS extracted from Python string into `freefox/assets/dashboard.html` and packaged via setuptools.
 - Code formatted and linted with ruff, enforced in CI. The upload worker and S3 multipart logic
   are split into small, documented functions.
 - Tests now cover S3 multipart resume, expired sessions, conflicts and the worker error policy.
