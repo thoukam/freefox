@@ -57,7 +57,7 @@ jobs:
             type=raw,value=${{ github.event.inputs.custom_tag || '' }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.custom_tag != '' }}
           labels: |
             org.opencontainers.image.title=FreeFox
-            org.opencontainers.image.description=Service libre d'upload automatique de rosbags ROS 2 vers Google Drive
+            org.opencontainers.image.description=Service libre d'upload automatique de rosbags ROS 2 vers Google Drive, rsync et S3
             org.opencontainers.image.vendor=YVES THOUKAM
 
       - name: Build et push
