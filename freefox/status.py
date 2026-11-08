@@ -6,6 +6,7 @@ import argparse
 import time
 from pathlib import Path
 
+from freefox import __version__
 from freefox.queue import UploadQueue
 
 
@@ -99,7 +100,14 @@ def _human_error(error: str | None) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Affiche l'etat de la file d'upload FreeFox.")
+    parser = argparse.ArgumentParser(
+        prog="freefox-status", description="Affiche l'etat de la file d'upload FreeFox."
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"freefox {__version__}",
+    )
     parser.add_argument(
         "db",
         nargs="?",
