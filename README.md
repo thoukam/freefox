@@ -1,265 +1,204 @@
 <p align="center">
-  <img src="images/freefox.png" alt="FreeFox" width="420">
+  <img src="images/freefox.png" alt="FreeFox" width="380">
 </p>
 
-# FreeFox
-
-**Collecte et upload automatique de rosbag ROS 2 vers Google Drive, rsync ou S3-compatible, libre et open source.**
-
-FreeFox est un petit service Linux qui surveille un dossier, detecte les rosbags termines, les place dans une file SQLite persistante, puis les envoie vers un backend de stockage configure.
-
-L'objectif est simple: donner a une equipe robotique un outil de collecte de donnees fiable, local, lisible, et sans abonnement.
+<h1 align="center">FreeFox</h1>
 
 <p align="center">
-  <img src="images/dashboard_freefox_blur.png" alt="Apercu floute du dashboard FreeFox" width="860">
+  <strong>Get every ROS 2 bag off your robots, reliably.</strong><br>
+  A small Linux service that watches your recording folder and ships finished rosbags to
+  Google Drive, a NAS over rsync/SSH, or any S3-compatible bucket, with resumable uploads,
+  BLAKE3 integrity checks and a live dashboard.
 </p>
 
 <p align="center">
-  <em>Un apercu volontairement floute du dashboard local.</em>
+  <a href="https://github.com/thoukam/freefox/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/thoukam/freefox/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
+  <img alt="ROS 2" src="https://img.shields.io/badge/ROS%202-mcap%20%7C%20db3-22314E.svg">
+  <a href="https://github.com/thoukam/freefox/pkgs/container/freefox"><img alt="Docker image" src="https://img.shields.io/badge/ghcr.io-thoukam%2Ffreefox-2496ED.svg?logo=docker&logoColor=white"></a>
+  <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 </p>
 
-```text
-Robot -> ros2 bag record -> /bags/ -> FreeFox -> Google Drive / rsync
-```
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#documentation">Docs</a> ·
+  <a href="#roadmap">Roadmap</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="README.fr.md">Français</a>
+</p>
 
-## Fonctionnalites
-
-- **Collecte automatique**: tourne comme service systemd, demarre au boot et continue apres redemarrage.
-- **Upload resumable**: envoi par chunks, retry automatique, backoff exponentiel.
-- **Reprise apres interruption**: les sessions Google Drive resumables sont stockees en SQLite.
-- **File persistante**: l'etat des transferts survit aux crashs et redemarrages.
-- **Integrite BLAKE3**: empreinte locale stockee en SQLite puis dans les metadonnees Drive.
-- **Gestion des doublons**: un contenu deja present avec le meme BLAKE3 n'est pas renvoye.
-- **Statut d'integrite**: le dashboard affiche `OK`, `NO` ou `attente` pour chaque transfert.
-- **Detection propre des fichiers**: FreeFox attend que la taille du fichier soit stable avant upload.
-- **Stockage organise**: les fichiers arrivent sous `<robot_id>/<YYYY-MM-DD>/<filename>`.
-- **Dashboard local**: interface web locale pour voir progression, debit, erreurs, fichiers surveilles et incidents.
-- **Backends de stockage**: Google Drive par defaut, rsync pour NAS/SSH, AWS S3 et MinIO-compatible.
-- **Compatible ROS 2**: fonctionne avec les bags `.mcap` et `.db3`.
-
-## Demarrage rapide
-
-Pour la procedure detaillee, voir [docs/installation.md](docs/installation.md).
-
-```bash
-git clone https://github.com/thoukam/freefox
-cd freefox
-
-python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-
-cp config/config.example.yaml config/local.gdrive.yaml
-nano config/local.gdrive.yaml
-```
-
-Lancer le dashboard local:
-
-```bash
-.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 127.0.0.1 --port 8765
-```
-
-Puis ouvrir:
+---
 
 ```text
-http://127.0.0.1:8765
+robot ─► ros2 bag record ─► /bags ─► FreeFox ─► Google Drive │ NAS (rsync/SSH) │ AWS S3 / MinIO
 ```
 
-Pour ouvrir le dashboard depuis un autre PC du meme reseau, lancez-le sur l'adresse reseau du robot:
+## Why FreeFox?
+
+Field robots generate gigabytes of rosbags per run, often on flaky Wi-Fi or 4G. Copying them
+by hand gets bags lost, duplicated or corrupted, and nobody notices until the data is needed.
+
+FreeFox runs on the robot and takes care of that job:
+
+- it **waits until a bag is complete** before touching it,
+- it **remembers every transfer in a local SQLite queue**, so a reboot or a crash never loses track,
+- it **resumes interrupted uploads** where they stopped instead of restarting a 20 GB file,
+- it **proves the file arrived intact** with a BLAKE3 fingerprint, and never sends the same content twice.
+
+It is free and self-hosted, with no subscription and no vendor lock-in. It works with the
+storage you already have.
+
+<p align="center">
+  <img src="images/dashboard_freefox_blur.png" alt="FreeFox dashboard (blurred preview)" width="860"><br>
+  <em>The local dashboard: progress, throughput, ETA, retries and integrity status per bag.</em>
+</p>
+
+## Features
+
+| | |
+|---|---|
+| **Hands-off collection** | Runs as a systemd service or a Docker container, starts at boot, watches folders recursively. |
+| **Complete bags only** | A file is queued only once its size has been stable for `stable_seconds`; `*.active`, `*.tmp` and `metadata.yaml` are ignored. |
+| **Durable queue** | Every transfer lives in SQLite (`queued → uploading → done / failed / conflict`) and survives crashes and reboots. |
+| **Resumable uploads** | Google Drive resumable sessions and S3 multipart state are persisted; rsync uses `--partial`. |
+| **Smart retries** | Exponential backoff, dedicated delays for quota and network errors, failed items requeued on start. |
+| **BLAKE3 integrity** | Fingerprint computed locally, stored remotely (Drive `appProperties`, S3 metadata, rsync sidecar) and checked. |
+| **Deduplication and conflict safety** | Identical content is never re-uploaded. A *different* file at the same path is flagged as a conflict and never overwritten. |
+| **Tidy layout** | Files land under `<prefix>/<robot_id>/<YYYY-MM-DD>/<filename>`, ready for a whole fleet. |
+| **Three backends** | Google Drive (OAuth2 or service account / Shared Drive), rsync (local disk, NAS, SSH), AWS S3 and MinIO-compatible. |
+| **Live dashboard** | Built-in web UI: per-bag progress, MiB/s and Mbps throughput, ETA, retries, errors and watched files. |
+| **Secure by default** | S3 secrets are rejected in YAML (standard AWS credential chain only), and secrets are redacted from logs. The systemd unit is hardened. |
+| **Multi-arch image** | `ghcr.io/thoukam/freefox` for `linux/amd64` and `linux/arm64` (Jetson, Raspberry Pi, industrial PCs). |
+
+Works with both ROS 2 bag formats: **`.mcap`** and **`.db3`**.
+
+## Quick start
+
+### Docker
 
 ```bash
-.venv/bin/python scripts/dashboard.py --config config/local.gdrive.yaml --host 0.0.0.0 --port 8765
+git clone https://github.com/thoukam/freefox && cd freefox
+cp config/config.docker.example.yaml config/config.docker.yaml   # choose your backend
+cp .env.example .env                                              # set the bags folder on the host
+docker compose pull && docker compose up -d
 ```
 
-Puis, depuis le PC client:
+Open the dashboard at `http://<robot-ip>:8765`. Full guide: [docs/docker-deployment.md](docs/en/docker-deployment.md).
 
-```text
-http://IP_DU_ROBOT:8765
-```
-
-Exemple:
-
-```text
-http://192.168.1.42:8765
-```
-
-## Installation systemd
+### systemd (bare metal)
 
 ```bash
-sudo ./install.sh
-sudo nano /etc/freefox/config.yaml
+git clone https://github.com/thoukam/freefox && cd freefox
+sudo ./install.sh                       # installs the package, /etc/freefox and the unit
+sudo nano /etc/freefox/config.yaml      # set watch.directory and your backend
 sudo systemctl enable --now freefox
 journalctl -u freefox -f
 ```
 
-Le script installe le package Python local, copie la configuration d'exemple, et enregistre `systemd/freefox.service`.
-
-## Deploiement Docker
-
-Docker est disponible comme option de deploiement progressive, sans remplacer systemd.
-
-Voir [docs/docker-deployment.md](docs/docker-deployment.md), notamment la checklist "nouvelle machine".
-
-L'image officielle du projet est publiee sur GHCR:
-
-```text
-ghcr.io/thoukam/freefox
-```
-
-Elle est construite pour `linux/amd64` et `linux/arm64`.
-
-Le fichier `docker-compose.yml` utilise l'image publiee. Pour developper localement depuis le code source, `docker-compose.build.yml` sert d'override: Docker Compose fusionne les deux fichiers.
+### Try it locally in 2 minutes (no cloud account)
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-```
-
-Pour utiliser l'image GHCR sans build local:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-## Google Drive
-
-La procedure complete est dans [docs/google-drive-setup.md](docs/google-drive-setup.md).
-
-Deux modes sont possibles:
-
-- **OAuth2 Desktop**: recommande pour tester avec un Google Drive personnel.
-- **Compte de service**: recommande pour un deploiement robot/flotte avec Shared Drive Google Workspace.
-
-Pour un Drive personnel, OAuth2 est le chemin le plus simple.
-
-## S3 / MinIO
-
-Le backend optionnel S3 prend en charge AWS S3 et les services compatibles comme MinIO. Voir
-[docs/s3-storage.md](docs/s3-storage.md) pour la configuration et les sources de credentials externes.
-
-## Rsync
-
-Rsync peut etre utilise a la place de Google Drive pour envoyer les bags vers un
-NAS, un disque monte ou un serveur accessible en SSH.
-Quand BLAKE3 est active, FreeFox cree aussi un petit fichier sidecar
-`<filename>.blake3` pour verifier les doublons sans relire le bag distant.
-
-Exemple local:
-
-```yaml
-storage:
-  backend: rsync
-
-rsync:
-  destination: /mnt/nas/freefox
-```
-
-Exemple SSH:
-
-```yaml
-storage:
-  backend: rsync
-
-rsync:
-  destination: user@serveur:/data/freefox
-  ssh_command: ssh
-```
-
-Pour le deploiement robot vers une machine distante, voir la section rsync de
-[docs/docker-deployment.md](docs/docker-deployment.md#deploiement-rsync-sur-un-vrai-robot).
-
-## Configuration
-
-Voir [`config/config.example.yaml`](config/config.example.yaml).
-
-Parametres principaux:
-
-| Cle | Exemple | Role |
-|---|---:|---|
-| `robot_id` | `robot-01` | Nom du robot, utilise dans le chemin Drive |
-| `watch.directory` | `/home/ros/bags` | Dossier surveille |
-| `watch.stable_seconds` | `5.0` | Temps sans modification avant upload |
-| `upload.workers` | `1` ou `2` | Nombre d'uploads en parallele |
-| `upload.chunk_size` | `8388608` | Taille des chunks resumables |
-| `upload.verify_blake3` | `true` | Calcule et stocke l'empreinte BLAKE3 |
-| `upload.deduplicate_by_hash` | `true` | Evite de renvoyer un contenu deja present |
-| `storage.backend` | `gdrive` | Backend utilise: `gdrive`, `rsync` ou `s3` |
-| `drive.credentials_file` | `secrets/client.json` | Fichier OAuth2 ou compte de service |
-| `drive.target_folder_id` | `...` | ID du dossier Google Drive cible |
-| `rsync.destination` | `user@host:/data/freefox` | Destination rsync locale ou SSH |
-| `queue_db` | `/var/lib/freefox/queue.db` | Base SQLite persistante |
-
-Variables d'environnement utiles:
-
-- `FREEFOX_ROBOT_ID`
-- `FREEFOX_CREDENTIALS`
-- `FREEFOX_TOKEN_PATH`
-
-## Tests locaux
-
-Test sans Google Drive:
-
-```bash
+python3 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
 .venv/bin/python scripts/local_smoke.py
 ```
 
-Test avec Google Drive:
+## Minimal configuration
 
-```bash
-FREEFOX_TOKEN_PATH=./secrets/freefox-token.json \
-.venv/bin/python scripts/gdrive_smoke.py --config config/local.gdrive.yaml
+```yaml
+robot_id: robot-01            # or FREEFOX_ROBOT_ID, defaults to the hostname
+
+watch:
+  directory: /home/ros/bags
+  stable_seconds: 5.0
+
+storage:
+  backend: rsync              # gdrive | rsync | s3
+
+rsync:
+  destination: user@nas:/data/freefox
 ```
 
-Voir la file SQLite:
+Every option is documented in [`config/config.example.yaml`](config/config.example.yaml).
+Backend guides:
 
-```bash
-.venv/bin/python scripts/queue_status.py /var/lib/freefox/queue.db
-```
+- **Google Drive**: [docs/google-drive-setup.md](docs/en/google-drive-setup.md) (OAuth2 for personal drives, service account and Shared Drive for fleets)
+- **AWS S3 / MinIO**: [docs/s3-storage.md](docs/en/s3-storage.md) (`pip install -e ".[s3]"`)
+- **rsync / NAS / SSH**: [docs/docker-deployment.md](docs/en/docker-deployment.md#rsync-on-a-real-robot)
 
-## Architecture
+## How it works
 
 ```text
-Watcher fichier
-    |
-    | fichier stable
-    v
-File SQLite persistante
-    |
-    | workers d'upload
-    v
-Backend Google Drive
-    |
-    v
-Dossier Google Drive partage
+ ┌────────────┐  stable file   ┌──────────────────┐  next ready   ┌───────────────┐
+ │  Watcher   │ ─────────────► │  SQLite queue    │ ────────────► │ Worker pool   │
+ │ (watchdog) │                │  (durable state) │ ◄──────────── │ BLAKE3, retry │
+ └────────────┘                └──────────────────┘   progress    └──────┬────────┘
+                                        ▲                                │
+                                        │ reads                          ▼
+                                 ┌──────┴──────┐            ┌──────────────────────────┐
+                                 │  Dashboard  │            │ Backend: gdrive │ rsync │ s3 │
+                                 └─────────────┘            └──────────────────────────┘
 ```
 
-## Developpement
+1. **Watcher** detects new `.mcap` / `.db3` files and waits until they stop growing.
+2. **Queue** records the transfer together with a snapshot of its destination. Changing the
+   config later never redirects a transfer that is already in progress.
+3. **Workers** compute BLAKE3, check the remote side (missing, identical or conflict), upload with
+   resume, and classify errors (transient, quota, auth, config, conflict).
+4. **Backends** implement one small, provider-neutral interface, so adding a new one is easy.
+
+More detail: [docs/architecture.md](docs/en/architecture.md).
+
+## Documentation
+
+| Guide | |
+|---|---|
+| [Installation](docs/en/installation.md) | Local dev setup, systemd, real-bag testing, resume behaviour |
+| [Google Drive](docs/en/google-drive-setup.md) | OAuth2 vs service account, Shared Drives |
+| [S3 / MinIO](docs/en/s3-storage.md) | Credentials chain, private CA, multipart resume |
+| [Docker](docs/en/docker-deployment.md) | Compose, GHCR image, rsync over SSH from a robot |
+| [Architecture](docs/en/architecture.md) | Components, queue states, backend contract |
+| [Website](https://thoukam.github.io/freefox/) | Project site |
+
+Every guide is available in English ([`docs/en/`](docs/en/)) and French ([`docs/fr/`](docs/fr/)).
+
+## Roadmap
+
+| Phase | Focus | Status |
+|---|---|---|
+| **v0.1** | Watcher, durable SQLite queue, Google Drive (resumable), rsync / NAS, BLAKE3 integrity and deduplication, dashboard, multi-arch Docker image | ✅ Shipped |
+| **v0.2** | AWS S3 / MinIO backend with durable multipart, conflict detection, per-transfer destination snapshots | ✅ Shipped |
+| **v0.3** | Observability and security: Prometheus `/metrics`, dashboard authentication, structured logs | 🚧 Next |
+| **v0.4** | Smarter uploads: rules by ROS 2 topic or bag metadata, bandwidth limits, upload time windows (Wi-Fi only, at night…) | 📋 Planned |
+| **v0.5** | More backends: Azure Blob, Google Cloud Storage, WebDAV | 📋 Planned |
+| **v1.0** | Fleet scale: central multi-robot view, PyPI release, native `ros2` package, stable config format | 🔭 Vision |
+
+Shipped changes are detailed in the [CHANGELOG](CHANGELOG.md). Have a need from your lab or company?
+[Open an issue](https://github.com/thoukam/freefox/issues). Real use cases shape the priorities.
+
+## Contributing
+
+FreeFox is young, and contributions of every size are welcome: bug reports, docs,
+translations, new backends, dashboard work, field reports from real robots.
 
 ```bash
-.venv/bin/pip install -e ".[dev]"
+git clone https://github.com/thoukam/freefox && cd freefox
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev,s3]"
 .venv/bin/python -m pytest
 ```
 
-Point d'entree CLI:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started, and look for issues labelled
+[`good first issue`](https://github.com/thoukam/freefox/labels/good%20first%20issue).
+Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) and report vulnerabilities privately as
+described in [SECURITY.md](SECURITY.md).
 
-```bash
-freefox --config /etc/freefox/config.yaml
-```
+Using FreeFox on a robot? Tell us in an issue. Real-world feedback shapes the roadmap.
 
-## Feuille de route
+## License
 
-- [x] Backend S3 / MinIO
-- [ ] Backend NAS / rsync
-- [ ] Filtres ROS 2 par topic
-- [x] Dashboard web local
-- [ ] Endpoint metriques Prometheus
-- [ ] Configuration multi-robots centralisee
+[Apache 2.0](LICENSE). Free for academic and commercial use.
 
-## Licence
-
-Apache 2.0 - utilisation libre, contributions bienvenues.
-
-## Auteur
-
-FreeFox est porte par **YVES THOUKAM**.
-
-Contact: [thoukamy@gmail.com](mailto:thoukamy@gmail.com)
+Created and maintained by **Yves Thoukam** ([thoukamy@gmail.com](mailto:thoukamy@gmail.com)).

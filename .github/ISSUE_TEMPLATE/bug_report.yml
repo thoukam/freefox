@@ -1,0 +1,56 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! English or French are both fine.
+        **Never paste credentials, tokens or `queue.db` contents with session URIs.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure storage.backend: rsync ...
+        2. Record a 2 GB bag ...
+        3. Unplug the network ...
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options: [gdrive, rsync, s3 (AWS), s3 (MinIO / other), not backend related]
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: Deployment
+      options: [systemd, Docker, local / venv]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: FreeFox version or commit
+      placeholder: v0.2.0 / sha-abc1234
+  - type: input
+    id: env
+    attributes:
+      label: Platform
+      placeholder: Ubuntu 24.04, ROS 2 Jazzy, Jetson Orin (arm64)
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Output of `journalctl -u freefox` or `docker compose logs freefox` (redact secrets).
+      render: text

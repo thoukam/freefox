@@ -207,11 +207,13 @@
     <div class="nav-sec">Backends</div>
     <a href="#gdrive"><span class="ni">☁</span>Google Drive</a>
     <a href="#rsync"><span class="ni">📡</span>Rsync / NAS</a>
+    <a href="#s3"><span class="ni">🪣</span>S3 / MinIO</a>
     <div class="nav-sec">Référence</div>
     <a href="#configuration"><span class="ni">📋</span>Configuration</a>
     <a href="#dashboard"><span class="ni">📊</span>Dashboard</a>
     <a href="#tests"><span class="ni">🧪</span>Tests</a>
     <a href="#roadmap"><span class="ni">🗺</span>Feuille de route</a>
+    <a href="#contribuer"><span class="ni">🤝</span>Contribuer</a>
   </div>
   <div class="sb-foot">
     Par <strong>Yves Thoukam</strong><br>
@@ -247,7 +249,7 @@
       <div class="sec-hd"><div class="sec-icon">🦊</div><h2>Aperçu</h2></div>
       <p>FreeFox est un service léger conçu pour les équipes robotiques qui enregistrent des rosbags sur le terrain et ont besoin de les récupérer automatiquement — peu importe où se trouve le robot.</p>
       <p>L'alternative la plus proche est la plateforme Foxglove Data, mais cette fonctionnalité est payante. FreeFox est la version libre : même flux, zéro abonnement.</p>
-      <pre>Robot  →  ros2 bag record  →  /bags/  →  FreeFox  →  Google Drive / rsync</pre>
+      <pre>Robot  →  ros2 bag record  →  /bags/  →  FreeFox  →  Google Drive / rsync / S3</pre>
       <div class="callout c-info"><div class="ci">💡</div><div>FreeFox ne touche pas à ROS 2 lui-même. Il surveille simplement un dossier et réagit aux fichiers qui y apparaissent. Il fonctionne en parallèle de n'importe quel setup ROS 2 existant.</div></div>
     </section>
     <div class="div"></div>
@@ -261,7 +263,7 @@
         <div class="feat"><div class="fi">🔁</div><div class="ft">Déduplication</div><div class="fd2">Un contenu déjà présent avec le même hash BLAKE3 n'est pas renvoyé. Économise bande passante et quota Drive sur les reboots répétés.</div></div>
         <div class="feat"><div class="fi">👁</div><div class="ft">Détection propre</div><div class="fd2">FreeFox attend que la taille du fichier soit stable avant de lancer l'upload. Compatible splits durée, taille, ou arrêt manuel.</div></div>
         <div class="feat"><div class="fi">📊</div><div class="ft">Dashboard local</div><div class="fd2">Interface web sur <code>localhost:8765</code>. Progression, débit, ETA, fichiers surveillés, incidents — accessible depuis tout PC du réseau.</div></div>
-        <div class="feat"><div class="fi">☁</div><div class="ft">Multi-backends</div><div class="fd2">Google Drive par défaut. Rsync pour NAS local, serveur SSH ou dossier monté. Interface backend abstraite — S3 prévu.</div></div>
+        <div class="feat"><div class="fi">☁</div><div class="ft">Multi-backends</div><div class="fd2">Google Drive par défaut. Rsync pour NAS local, serveur SSH ou dossier monté. AWS S3 et MinIO avec multipart reprenable.</div></div>
         <div class="feat"><div class="fi">🐳</div><div class="ft">Docker multi-arch</div><div class="fd2">Image publiée sur GHCR pour <code>linux/amd64</code> et <code>linux/arm64</code>. Déploiement progressif sans remplacer systemd.</div></div>
       </div>
     </section>
@@ -278,10 +280,11 @@
         <div class="an p">🗄 Upload Queue — SQLite persistant</div>
         <div class="arr"><div class="al"></div><div class="atxt">N workers</div><div class="ah">▼</div></div>
         <div class="an">⚙ Upload Worker Pool — retry + backoff</div>
-        <div class="arr"><div class="al"></div><div class="atxt">HTTPS / rsync</div><div class="ah">▼</div></div>
+        <div class="arr"><div class="al"></div><div class="atxt">HTTPS / rsync / S3</div><div class="ah">▼</div></div>
         <div class="asplit">
           <div class="abr"><div class="an" style="min-width:150px;font-size:13px">☁ Google Drive</div></div>
           <div class="abr"><div class="an" style="min-width:150px;font-size:13px">📡 Rsync / NAS</div></div>
+          <div class="abr"><div class="an" style="min-width:150px;font-size:13px">🪣 S3 / MinIO</div></div>
         </div>
       </div>
       <div class="tw"><table>
@@ -289,10 +292,11 @@
         <tbody>
           <tr><td>config.py</td><td>Lit le YAML, expose des dataclasses typées à tout le reste</td></tr>
           <tr><td>watcher.py</td><td>Surveille un dossier, callback quand un bag est stable</td></tr>
-          <tr><td>queue.py</td><td>File SQLite : pending / queued / uploading / done / failed</td></tr>
-          <tr><td>worker.py</td><td>Pool de threads qui drainenet la queue et uploadent</td></tr>
+          <tr><td>queue.py</td><td>File SQLite : queued / uploading / done / failed / conflict</td></tr>
+          <tr><td>worker.py</td><td>Pool de threads qui drainent la queue, calculent BLAKE3 et uploadent</td></tr>
           <tr><td>backends/gdrive.py</td><td>Upload résumable chunked vers Google Drive</td></tr>
           <tr><td>backends/rsync.py</td><td>Envoi via rsync local ou SSH</td></tr>
+          <tr><td>backends/s3.py</td><td>AWS S3 / MinIO, multipart persisté en SQLite</td></tr>
           <tr><td>service.py</td><td>Orchestre tout, gère SIGTERM/SIGINT, CLI</td></tr>
         </tbody>
       </table></div>
@@ -359,7 +363,7 @@ docker compose up -d</pre>
   credentials_file: secrets/sa.json
   target_folder_id: "1ABC..."</pre></div>
       </div>
-      <div class="callout c-info"><div class="ci">📖</div><div>Procédure détaillée dans <code>docs/google-drive-setup.md</code> : création projet GCP, activation API Drive, partage du dossier.</div></div>
+      <div class="callout c-info"><div class="ci">📖</div><div>Procédure détaillée dans <a href="https://github.com/thoukam/freefox/blob/main/docs/fr/google-drive-setup.md"><code>docs/fr/google-drive-setup.md</code></a> : création projet GCP, activation API Drive, partage du dossier.</div></div>
       <h3>Variables d'environnement</h3>
       <pre>FREEFOX_ROBOT_ID=robot-01
 FREEFOX_CREDENTIALS=/etc/freefox/credentials.json
@@ -385,6 +389,20 @@ rsync:
     </section>
     <div class="div"></div>
 
+    <section id="s3">
+      <div class="sec-hd"><div class="sec-icon">🪣</div><h2>Backend S3 / MinIO</h2></div>
+      <p>Compatible AWS S3 et les stockages S3 auto-hébergés comme MinIO. Installez l'extra <code>pip install -e ".[s3]"</code>; le bucket doit exister.</p>
+      <pre>storage:
+  backend: s3
+s3:
+  bucket: robot-bags
+  object_prefix: freefox
+  region: eu-west-3
+  endpoint_url: ""   # URL MinIO, vide pour AWS</pre>
+      <div class="callout c-tip"><div class="ci">🔒</div><div>Les clés ne sont jamais acceptées dans le YAML : FreeFox utilise la chaîne standard AWS (variables <code>AWS_*</code>, profil, rôle). L'état multipart est persisté en SQLite pour reprendre après redémarrage. Voir <a href="https://github.com/thoukam/freefox/blob/main/docs/fr/s3-storage.md">docs/fr/s3-storage.md</a>.</div></div>
+    </section>
+    <div class="div"></div>
+
     <section id="configuration">
       <div class="sec-hd"><div class="sec-icon">📋</div><h2>Configuration</h2></div>
       <p>Toute la configuration se fait dans un fichier YAML. Voir <code>config/config.example.yaml</code>.</p>
@@ -398,10 +416,12 @@ rsync:
           <tr><td>upload.chunk_size</td><td>8388608</td><td>Taille des chunks resumables (8 MiB)</td></tr>
           <tr><td>upload.verify_blake3</td><td>true</td><td>Calcule et stocke l'empreinte BLAKE3</td></tr>
           <tr><td>upload.deduplicate_by_hash</td><td>true</td><td>Évite de renvoyer un contenu déjà présent</td></tr>
-          <tr><td>storage.backend</td><td>gdrive</td><td>Backend actif : <code>gdrive</code> ou <code>rsync</code></td></tr>
+          <tr><td>storage.backend</td><td>gdrive</td><td>Backend actif : <code>gdrive</code>, <code>rsync</code> ou <code>s3</code></td></tr>
           <tr><td>drive.credentials_file</td><td>secrets/client.json</td><td>OAuth2 ou compte de service</td></tr>
           <tr><td>drive.target_folder_id</td><td>1ABC…</td><td>ID du dossier Google Drive cible</td></tr>
           <tr><td>rsync.destination</td><td>user@host:/data</td><td>Destination rsync locale ou SSH</td></tr>
+          <tr><td>s3.bucket</td><td>robot-bags</td><td>Bucket S3 existant</td></tr>
+          <tr><td>s3.endpoint_url</td><td>https://minio:9000</td><td>Endpoint MinIO (vide pour AWS)</td></tr>
           <tr><td>queue_db</td><td>/var/lib/freefox/queue.db</td><td>Base SQLite persistante</td></tr>
         </tbody>
       </table></div>
@@ -448,12 +468,25 @@ rsync:
           <tr><td>Backend Rsync / NAS</td><td><span class="badge bg">✓ Disponible</span></td></tr>
           <tr><td>Intégrité BLAKE3</td><td><span class="badge bg">✓ Disponible</span></td></tr>
           <tr><td>Docker multi-arch</td><td><span class="badge bg">✓ Disponible</span></td></tr>
-          <tr><td>Backend S3 / MinIO</td><td><span class="badge bo">En cours</span></td></tr>
+          <tr><td>Backend S3 / MinIO</td><td><span class="badge bg">✓ Disponible</span></td></tr>
           <tr><td>Filtres ROS 2 par topic</td><td><span class="badge bb">Planifié</span></td></tr>
           <tr><td>Métriques Prometheus</td><td><span class="badge bb">Planifié</span></td></tr>
-          <tr><td>Config multi-robots centralisée</td><td><span class="badge bb">Planifié</span></td></tr>
+          <tr><td>Authentification du dashboard</td><td><span class="badge bb">Planifié</span></td></tr>
+          <tr><td>Limitation de bande passante / fenêtres horaires</td><td><span class="badge bb">Planifié</span></td></tr>
+          <tr><td>Backends Azure Blob, GCS, WebDAV</td><td><span class="badge bb">Planifié</span></td></tr>
+          <tr><td>Vue multi-robots centralisée</td><td><span class="badge bb">Planifié</span></td></tr>
         </tbody>
       </table></div>
+    </section>
+
+    <div class="div"></div>
+    <section id="contribuer">
+      <div class="sec-hd"><div class="sec-icon">🤝</div><h2>Contribuer</h2></div>
+      <p>FreeFox est un projet communautaire : retours terrain, bugs, documentation, traductions, nouveaux backends… toutes les contributions sont bienvenues, en français ou en anglais.</p>
+      <pre>git clone https://github.com/thoukam/freefox && cd freefox
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev,s3]"
+.venv/bin/python -m pytest</pre>
+      <p>Lisez le <a href="https://github.com/thoukam/freefox/blob/main/CONTRIBUTING.fr.md">guide de contribution</a> et le <a href="https://github.com/thoukam/freefox/blob/main/docs/fr/architecture.md">guide d'architecture</a>, puis choisissez une issue <a href="https://github.com/thoukam/freefox/labels/good%20first%20issue">good first issue</a>.</p>
     </section>
 
   </div>

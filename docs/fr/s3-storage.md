@@ -1,3 +1,5 @@
+[English](../en/s3-storage.md) · **Français**
+
 # Stockage AWS S3 et MinIO-compatible
 
 Installez l’extra optionnel avec `pip install -e ".[s3]"`, puis sélectionnez `storage.backend: s3`.
@@ -37,5 +39,26 @@ AWS_PROFILE=robot .venv/bin/python scripts/s3_smoke.py \
   --config config/local.s3.yaml --file /tmp/test.mcap
 ```
 
-Le script confirme l’objet par taille et BLAKE3. Utilisez un préfixe de test isolé. Pour tester reprise,
-conflit et interruptions, suivez `specs/001-add-s3-storage/quickstart.md`.
+Le script confirme l’objet par taille et BLAKE3. Utilisez un préfixe de test isolé.
+
+## Comportement
+
+- **Upload multipart durable**: le service envoie chaque bag en multipart; l’`UploadId` et les parts
+  déjà confirmées sont persistés en SQLite, ce qui permet de reprendre après un redémarrage sans renvoyer
+  les parts terminées.
+- **Métadonnées**: le BLAKE3 et la taille sont stockés dans les métadonnées de l’objet
+  (`freefox-blake3`, `freefox-size`), puis revérifiés après la finalisation.
+- **Taille des parts**: au moins 5 MiB, et augmentée automatiquement pour rester sous la limite de
+  10 000 parts imposée par S3.
+- **Doublons**: si un objet existe déjà avec la même taille et le même BLAKE3, le transfert est marqué
+  terminé sans renvoi.
+- **Conflits**: si un objet existe à la même clé avec un contenu différent, FreeFox ne l’écrase pas; le
+  transfert passe en `conflict` et doit être traité par un opérateur.
+- **Logs**: les signatures, clés et tokens présents dans les messages d’erreur sont masqués.
+
+## Tester la reprise
+
+1. Lancez FreeFox avec `storage.backend: s3` et déposez un fichier de plus de 50 MiB.
+2. Arrêtez le service pendant l’upload (`systemctl stop freefox` ou `Ctrl+C`).
+3. Relancez-le: l’entrée repasse en file et reprend à partir des parts déjà confirmées.
+4. Vérifiez avec `scripts/queue_status.py` que l’entrée finit en `done`.

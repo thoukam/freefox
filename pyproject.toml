@@ -4,13 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "freefox"
-version = "0.1.0"
-description = "Service libre d'upload automatique de rosbags ROS 2 vers Google Drive, rsync et S3-compatible"
+version = "0.2.0"
+description = "Reliable, resumable upload of ROS 2 bags from robots to Google Drive, rsync/NAS and S3-compatible storage"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 
-keywords = ["ros2", "rosbag", "robotics", "google-drive", "s3", "minio", "upload"]
+keywords = ["ros2", "rosbag", "mcap", "robotics", "data-collection", "google-drive", "s3", "minio", "rsync", "upload", "fleet"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Robotics",
+    "Topic :: System :: Archiving :: Backup",
+]
 
 authors = [
   { name = "YVES THOUKAM", email = "thoukamy@gmail.com" },
@@ -29,6 +43,12 @@ dependencies = [
     "google-auth-httplib2>=0.2",
     "watchdog>=3.0",
 ]
+
+[project.urls]
+Homepage = "https://thoukam.github.io/freefox/"
+Repository = "https://github.com/thoukam/freefox"
+Issues = "https://github.com/thoukam/freefox/issues"
+Changelog = "https://github.com/thoukam/freefox/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
