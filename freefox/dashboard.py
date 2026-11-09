@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from freefox import __version__
 from freefox.config import CollectorConfig
 from freefox.queue import QueueEntry, UploadQueue
 
@@ -700,7 +701,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dashboard web local FreeFox")
+    parser = argparse.ArgumentParser(
+        prog="freefox-dashboard", description="Dashboard web local FreeFox"
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"freefox {__version__}",
+    )
     parser.add_argument("-c", "--config", default="/etc/freefox/config.yaml")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)

@@ -9,6 +9,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 ## [Non publié]
 
 ### Ajouté
+- Option `--version` sur `freefox`, `freefox-dashboard` et `freefox-status` pour afficher la version installée.
 - Publication sur PyPI : `pip install freefox` (avec l'extra `s3` pour S3 / MinIO). Un workflow
   publie chaque release GitHub via le Trusted Publishing PyPI.
 - Commandes `freefox-dashboard` et `freefox-status`, installées avec le paquet. Les scripts

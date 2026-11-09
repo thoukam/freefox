@@ -8,6 +8,7 @@ import signal
 import sys
 from pathlib import Path
 
+from freefox import __version__
 from freefox.backends.factory import BackendRegistry, _snapshot
 from freefox.config import CollectorConfig
 from freefox.queue import UploadQueue
@@ -112,6 +113,11 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         prog="freefox", description="Automatically upload ROS 2 bags to cloud storage."
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"freefox {__version__}",
     )
     parser.add_argument("-c", "--config", default="/etc/freefox/config.yaml")
     parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
