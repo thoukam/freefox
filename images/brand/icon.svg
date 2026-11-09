@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="FreeFox">
+  <title>FreeFox</title>
+  <!-- silhouette (also hides seams between facets) -->
+  <polygon points="40,84 60,20 112,72 144,72 196,20 216,84 128,236" fill="#FF6B00"/>
+  <!-- right half in red for a folded look -->
+  <polygon points="128,72 144,72 196,20 216,84 128,236" fill="#E63200"/>
+  <!-- inner ears -->
+  <polygon points="58,72 66,42 92,68" fill="#1A0A00"/>
+  <polygon points="198,72 190,42 164,68" fill="#1A0A00"/>
+  <!-- forehead -->
+  <polygon points="112,72 144,72 128,104" fill="#FFAA33"/>
+  <!-- cheeks -->
+  <polygon points="63,104 128,160 128,214" fill="#F5F0E8"/>
+  <polygon points="193,104 128,160 128,214" fill="#E8DCCB"/>
+  <!-- eyes -->
+  <polygon points="86,116 106,110 101,127" fill="#1A0A00"/>
+  <polygon points="170,116 150,110 155,127" fill="#1A0A00"/>
+  <!-- nose -->
+  <polygon points="116,212 140,212 128,232" fill="#1A0A00"/>
+</svg>

@@ -5,11 +5,27 @@
 Docker est une option de déploiement en plus de systemd : il ne le remplace pas, et les deux
 peuvent coexister sur la même machine.
 
-```text
-robot
-  docker compose
-    freefox    -> surveille /bags et uploade vers le backend configuré
-    dashboard  -> expose http://IP_DU_ROBOT:8765
+```mermaid
+flowchart LR
+    rec["🎥 ros2 bag record"] --> bags[("📁 dossier des bags")]
+
+    subgraph host ["Robot · docker compose"]
+        ff["🦊 conteneur freefox<br/>surveille /bags, envoie"]
+        dash["📊 conteneur dashboard<br/>port 8765"]
+        db[("🗃️ /var/lib/freefox<br/>queue.db")]
+        ff <--> db
+        dash -. lit .-> db
+    end
+
+    bags --> ff
+    ff --> storage["☁️ backend configuré<br/>Drive · rsync · S3"]
+    browser["💻 votre navigateur<br/>http://IP_DU_ROBOT:8765"] --> dash
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef core fill:#FF6B00,stroke:#E63200,color:#ffffff
+    class ff,dash core
+    style host fill:#FFF8F1,stroke:#FF9A4D,color:#1A0A00
 ```
 
 Les deux conteneurs partagent la même base SQLite montée depuis l'hôte (`/var/lib/freefox/queue.db`).
@@ -122,8 +138,15 @@ Voir aussi [google-drive-setup.md](google-drive-setup.md).
 
 Pour envoyer les bags vers un PC de supervision, un NAS ou un serveur SSH :
 
-```text
-robot -> FreeFox -> rsync SSH -> machine de destination
+```mermaid
+flowchart LR
+    robot["🤖 Robot<br/>FreeFox"] -->|"rsync via SSH<br/>clé dédiée"| dest["🗄️ Destination<br/>PC, NAS ou serveur"]
+    dest --> files["📁 /data/freefox/robot_id/date/<br/>bag.mcap + bag.mcap.blake3"]
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef core fill:#FF6B00,stroke:#E63200,color:#ffffff
+    class robot core
 ```
 
 `rsync` et `openssh-client` sont déjà installés dans l'image. Hors Docker :
