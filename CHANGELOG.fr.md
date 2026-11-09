@@ -8,12 +8,17 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 
 ## [Non publié]
 
+## [0.2.1] - 2026-11-09
+
+Première version publiée sur PyPI : `pip install freefox`.
+
 ### Ajouté
 - Nouvelle identité visuelle : un logo de renard géométrique simple, des bannières de README (EN/FR)
   et des logos avec le nom dans `images/brand/`, générés par `scripts/make_brand_assets.py`.
 - Des schémas Mermaid remplacent l'art ASCII dans les README et les guides : vue d'ensemble, cycle
   de vie d'un bag (séquence), états de la file, politique d'erreurs, déploiements Docker et rsync.
-- Option `--version` sur `freefox`, `freefox-dashboard` et `freefox-status` pour afficher la version installée.
+- Option `--version` sur `freefox`, `freefox-dashboard` et `freefox-status` pour afficher la version installée
+  (merci à [@X6M-Work](https://github.com/X6M-Work), #16).
 - Publication sur PyPI : `pip install freefox` (avec l'extra `s3` pour S3 / MinIO). Un workflow
   publie chaque release GitHub via le Trusted Publishing PyPI.
 - Commandes `freefox-dashboard` et `freefox-status`, installées avec le paquet. Les scripts
@@ -70,6 +75,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 - Image Docker (`linux/amd64`, `linux/arm64`) publiée sur GHCR, avec fichiers Docker Compose.
 - Site du projet sur GitHub Pages.
 
-[Non publié]: https://github.com/thoukam/freefox/compare/v0.2.0...HEAD
+[Non publié]: https://github.com/thoukam/freefox/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/thoukam/freefox/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/thoukam/freefox/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thoukam/freefox/commits/v0.2.0
