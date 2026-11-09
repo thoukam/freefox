@@ -13,38 +13,15 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 Première version publiée sur PyPI : `pip install freefox`.
 
 ### Ajouté
-- Nouvelle identité visuelle : un logo de renard géométrique simple, des bannières de README (EN/FR)
-  et des logos avec le nom dans `images/brand/`, générés par `scripts/make_brand_assets.py`.
-- Des schémas Mermaid remplacent l'art ASCII dans les README et les guides : vue d'ensemble, cycle
-  de vie d'un bag (séquence), états de la file, politique d'erreurs, déploiements Docker et rsync.
-- Option `--version` sur `freefox`, `freefox-dashboard` et `freefox-status` pour afficher la version installée
-  (merci à [@X6M-Work](https://github.com/X6M-Work), #16).
-- Publication sur PyPI : `pip install freefox` (avec l'extra `s3` pour S3 / MinIO). Un workflow
-  publie chaque release GitHub via le Trusted Publishing PyPI.
-- Commandes `freefox-dashboard` et `freefox-status`, installées avec le paquet. Les scripts
-  `scripts/dashboard.py` et `scripts/queue_status.py` fonctionnent toujours.
-- Guide de publication (`docs/fr/releasing.md`, `docs/en/releasing.md`).
-- Versions française et anglaise de tous les documents : `*.md` / `*.fr.md` à la racine,
-  `docs/en/` et `docs/fr/` pour les guides.
-- Guide de contribution, code de conduite, politique de sécurité, modèles d'issues et de pull requests.
-- Guide d'architecture (`docs/fr/architecture.md`, `docs/en/architecture.md`).
-- Workflow de CI qui lance les tests sur Python 3.10 à 3.12.
+- Publication sur PyPI, avec les commandes `freefox-dashboard` et `freefox-status`.
+- Option `--version` sur toutes les commandes (merci à [@X6M-Work](https://github.com/X6M-Work), #16).
+- Documentation en anglais et en français, avec un guide d'architecture.
 
 ### Corrigé
-- Un thread d'upload ne meurt plus en silence quand le calcul de l'empreinte BLAKE3 ou la création
-  du backend échoue (par exemple une config S3 invalide ou un bag supprimé pendant la lecture).
-  L'entrée est désormais réessayée avec backoff et l'erreur est enregistrée.
+- Un worker d'upload ne s'arrête plus en silence quand le calcul BLAKE3 ou la création du backend échoue.
 
 ### Modifié
-- Code formaté et vérifié avec ruff, contrôlé par la CI. Le worker d'upload et la logique multipart
-  S3 sont découpés en petites fonctions documentées.
-- Les tests couvrent maintenant la reprise multipart S3, les sessions expirées, les conflits et la
-  politique d'erreurs du worker.
-- L'unité `systemd/freefox.service` est maintenant générique (`/etc/freefox/config.yaml`, `/var/lib/freefox`).
-- Guides déplacés dans `docs/en/` et `docs/fr/`, et guides Docker et Google Drive réorganisés.
-- Feuille de route du README présentée par phases.
-- Métadonnées du package : licence SPDX, classifiers, URLs du projet, version définie à un seul
-  endroit. Le logo du dashboard est inclus dans le paquet (31 Ko) et l'image Docker ne copie plus `images/`.
+- L'unité systemd est maintenant générique (`/etc/freefox/config.yaml`, `/var/lib/freefox`).
 
 ## [0.2.0] - 2026-08-15
 
