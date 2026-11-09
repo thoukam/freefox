@@ -1,29 +1,26 @@
 <p align="center">
-  <img src="images/freefox.png" alt="FreeFox" width="380">
-</p>
-
-<h1 align="center">FreeFox</h1>
-
-<p align="center">
-  <strong>Récupérez chaque rosbag ROS 2 de vos robots, de manière fiable.</strong><br>
-  Un petit service Linux qui surveille votre dossier d'enregistrement et envoie les rosbags terminés
-  vers Google Drive, un NAS via rsync/SSH ou tout bucket compatible S3, avec reprise des uploads,
-  contrôle d'intégrité BLAKE3 et dashboard en direct.
+  <a href="https://github.com/thoukam/freefox">
+    <img src="images/brand/banner.fr.svg" alt="FreeFox : récupération fiable des rosbags pour robots ROS 2" width="100%">
+  </a>
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> ·
-  <a href="#démarrage-rapide">Démarrage rapide</a> ·
-  <a href="#documentation">Documentation</a> ·
-  <a href="#feuille-de-route">Feuille de route</a> ·
-  <a href="CONTRIBUTING.fr.md">Contribuer</a>
+  <a href="https://github.com/thoukam/freefox/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/thoukam/freefox/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://pypi.org/project/freefox/"><img alt="PyPI" src="https://img.shields.io/pypi/v/freefox.svg"></a>
+  <a href="https://thoukam.github.io/freefox/"><img alt="Docs" src="https://img.shields.io/badge/docs-thoukam.github.io-FF6B00.svg"></a>
+  <a href="https://github.com/thoukam/freefox/pkgs/container/freefox"><img alt="Image Docker" src="https://img.shields.io/badge/ghcr.io-thoukam%2Ffreefox-2496ED.svg?logo=docker&logoColor=white"></a>
+  <a href="LICENSE"><img alt="Licence Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
+  <a href="CONTRIBUTING.fr.md"><img alt="Contributions bienvenues" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 </p>
 
----
+**FreeFox récupère chaque rosbag ROS 2 de vos robots, de manière fiable.** C'est un petit service
+Linux qui surveille votre dossier d'enregistrement et envoie les rosbags terminés vers Google Drive,
+un NAS via rsync/SSH ou tout bucket compatible S3. Les uploads reprennent après un crash, chaque
+fichier est vérifié avec BLAKE3, et un dashboard en direct montre ce qui se passe.
 
-```text
-robot ─► ros2 bag record ─► /bags ─► FreeFox ─► Google Drive │ NAS (rsync/SSH) │ AWS S3 / MinIO
-```
+> **Statut : 0.2, bêta.** Le cœur (file, reprise, intégrité, trois backends) est implémenté et
+> testé ; le format de configuration peut encore évoluer avant la 1.0.
+> [Notes de version](CHANGELOG.fr.md) · [Feuille de route](#feuille-de-route) · [English](README.md)
 
 ## Pourquoi FreeFox ?
 
@@ -31,15 +28,27 @@ Un robot de terrain produit des gigaoctets de rosbags à chaque mission, souvent
 4G instable. Copiés à la main, des bags se perdent, se dupliquent ou se corrompent, et on ne s'en
 rend compte qu'au moment d'exploiter les données.
 
+```mermaid
+flowchart LR
+    rec["🎥 ros2 bag record"] --> bags[("📁 dossier des bags<br/>sur le robot")]
+    bags --> ff["🦊 FreeFox<br/>surveille · vérifie · envoie"]
+    ff --> gd["☁️ Google Drive"]
+    ff --> nas["🗄️ NAS ou serveur<br/>rsync via SSH"]
+    ff --> s3["🪣 AWS S3 / MinIO"]
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef fox fill:#FF6B00,stroke:#E63200,color:#ffffff,font-weight:bold
+    class ff fox
+```
+
 FreeFox tourne sur le robot et s'en occupe :
 
-- il **attend qu'un bag soit terminé** avant d'y toucher ;
-- il **garde chaque transfert dans une file SQLite locale** : un redémarrage ou un crash ne fait rien perdre ;
-- il **reprend les uploads interrompus** là où ils se sont arrêtés au lieu de renvoyer 20 Go ;
-- il **prouve que le fichier est arrivé intact** grâce à une empreinte BLAKE3, et n'envoie jamais deux fois le même contenu.
-
-C'est libre et auto-hébergé, sans abonnement et sans dépendance à un fournisseur. FreeFox
-fonctionne avec le stockage que vous avez déjà.
+- **Uniquement des bags complets.** Il attend la fin d'un enregistrement avant d'y toucher.
+- **Rien ne se perd.** Chaque transfert est gardé dans une file SQLite locale, malgré les crashs et redémarrages.
+- **Reprendre, pas recommencer.** Un upload de 20 Go interrompu repart là où il s'est arrêté.
+- **Preuve d'intégrité.** Une empreinte BLAKE3 prouve que le fichier est arrivé intact, et un même contenu n'est jamais envoyé deux fois.
+- **Votre stockage, sans abonnement.** Libre, auto-hébergé, sans dépendance à un fournisseur.
 
 <p align="center">
   <img src="images/dashboard_freefox_blur.png" alt="Dashboard FreeFox (aperçu flouté)" width="860">
@@ -136,6 +145,33 @@ Toutes les options sont commentées dans [`config/config.example.yaml`](config/c
 Variables d'environnement : `FREEFOX_ROBOT_ID`, `FREEFOX_CREDENTIALS`, `FREEFOX_TOKEN_PATH`, et la
 chaîne standard `AWS_*` pour S3.
 
+## Fonctionnement
+
+```mermaid
+flowchart LR
+    W["👁️ Watcher<br/>attend que le bag<br/>ne grossisse plus"] -->|nouveau bag| Q[("🗃️ File SQLite<br/>état durable")]
+    Q -->|bag suivant| P["⚙️ Workers<br/>BLAKE3 · retries · reprise"]
+    P -->|progression et résultat| Q
+    P --> GD["☁️ Google Drive"]
+    P --> RS["🗄️ rsync / NAS"]
+    P --> S3["🪣 S3 / MinIO"]
+    D["📊 Dashboard"] -. lit .-> Q
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef core fill:#FF6B00,stroke:#E63200,color:#ffffff
+    class W,P core
+```
+
+1. Le **watcher** repère les nouveaux fichiers `.mcap` / `.db3` et attend qu'ils ne grossissent plus.
+2. La **file** enregistre le transfert avec un instantané de sa destination : modifier la config
+   ensuite ne détourne jamais un transfert déjà en cours.
+3. Les **workers** calculent le BLAKE3, inspectent le côté distant (absent, identique ou en conflit),
+   envoient avec reprise et classent les erreurs (temporaire, quota, authentification, config, conflit).
+4. Les **backends** implémentent une petite interface commune : en ajouter un nouveau est simple.
+
+Plus de détails : [docs/fr/architecture.md](docs/fr/architecture.md).
+
 ## Documentation
 
 - [Installation](docs/fr/installation.md)
@@ -165,7 +201,7 @@ Tous les guides existent en français ([`docs/fr/`](docs/fr/)) et en anglais ([`
 | **v0.3** | Observabilité et sécurité : Prometheus `/metrics`, authentification du dashboard, logs structurés | 🚧 Prochaine étape |
 | **v0.4** | Uploads intelligents : règles par topic ROS 2 ou métadonnées du bag, limite de bande passante, fenêtres horaires (Wi-Fi uniquement, la nuit…) | 📋 Planifié |
 | **v0.5** | Nouveaux backends : Azure Blob, Google Cloud Storage, WebDAV | 📋 Planifié |
-| **v1.0** | Échelle flotte : vue centralisée multi-robots, publication PyPI, paquet `ros2` natif, format de config stable | 🔭 Vision |
+| **v1.0** | Échelle flotte : vue centralisée multi-robots, paquet `ros2` natif, format de config stable | 🔭 Vision |
 
 Le détail de ce qui est livré est dans le [CHANGELOG](CHANGELOG.fr.md). Un besoin dans votre labo ou
 votre entreprise ? [Ouvrez une issue](https://github.com/thoukam/freefox/issues) : les cas d'usage

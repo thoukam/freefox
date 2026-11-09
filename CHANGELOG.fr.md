@@ -9,6 +9,10 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), et le p
 ## [Non publié]
 
 ### Ajouté
+- Nouvelle identité visuelle : un logo de renard géométrique simple, des bannières de README (EN/FR)
+  et des logos avec le nom dans `images/brand/`, générés par `scripts/make_brand_assets.py`.
+- Des schémas Mermaid remplacent l'art ASCII dans les README et les guides : vue d'ensemble, cycle
+  de vie d'un bag (séquence), états de la file, politique d'erreurs, déploiements Docker et rsync.
 - Option `--version` sur `freefox`, `freefox-dashboard` et `freefox-status` pour afficher la version installée.
 - Publication sur PyPI : `pip install freefox` (avec l'extra `s3` pour S3 / MinIO). Un workflow
   publie chaque release GitHub via le Trusted Publishing PyPI.

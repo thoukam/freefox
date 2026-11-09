@@ -7,20 +7,29 @@ un backend.
 
 ## Vue d'ensemble
 
-```text
-          ┌─────────────────────────────── freefox (un seul processus) ───────────────────────────┐
-          │                                                                                       │
- /bags ──►│  FileWatcher ──(fichier stable)──► UploadQueue (SQLite) ◄──► UploadWorkerPool (N threads)│──► stockage
-          │   watcher.py                          queue.py                  worker.py              │
-          │                                          ▲                         │                  │
-          │                                          │                  BackendRegistry            │
-          │                                          │                  backends/factory.py        │
-          │                                          │                    ├─ gdrive.py             │
-          │                                          │                    ├─ rsync.py              │
-          │                                          │                    └─ s3.py                 │
-          └──────────────────────────────────────────┼────────────────────────────────────────────┘
-                                                     │ lecture seule
-                                         freefox-dashboard (processus séparé, HTTP :8765)
+```mermaid
+flowchart LR
+    bags[("📁 dossier des bags")] --> watcher
+
+    subgraph proc ["processus freefox"]
+        watcher["FileWatcher<br/><i>watcher.py</i>"] -->|bag stable| queue[("UploadQueue · SQLite<br/><i>queue.py</i>")]
+        queue -->|entrée suivante| pool["UploadWorkerPool · N threads<br/><i>worker.py</i>"]
+        pool -->|état, progression| queue
+        pool --> reg["BackendRegistry<br/><i>backends/factory.py</i>"]
+    end
+
+    reg --> gd["☁️ gdrive.py<br/>Google Drive"]
+    reg --> rs["🗄️ rsync.py<br/>NAS / SSH"]
+    reg --> s3["🪣 s3.py<br/>S3 / MinIO"]
+
+    dash["📊 freefox-dashboard<br/>processus séparé · HTTP :8765"] -. lit .-> queue
+    status["🖥️ freefox-status"] -. lit .-> queue
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef core fill:#FF6B00,stroke:#E63200,color:#ffffff
+    class watcher,pool core
+    style proc fill:#FFF8F1,stroke:#FF9A4D,color:#1A0A00
 ```
 
 `freefox/service.py` assemble le tout. C'est aussi le point d'entrée de la CLI `freefox`.
@@ -41,6 +50,35 @@ un backend.
 
 ## Cycle de vie d'un bag
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant R as ros2 bag record
+    participant W as Watcher
+    participant Q as File SQLite
+    participant K as Worker
+    participant B as Backend
+
+    R->>W: écrit run_0.mcap
+    W->>W: attend que la taille soit stable et le fichier fermé
+    W->>Q: ajoute l'entrée (chemin distant + snapshot de destination)
+    K->>Q: prend la prochaine entrée prête → uploading
+    K->>K: calcule le BLAKE3 une fois et le stocke
+    K->>B: inspecte le chemin distant
+    alt absent
+        B-->>K: MISSING
+        K->>B: upload (reprend depuis la session ou les parts sauvegardées)
+        B-->>K: envoyé et vérifié
+        K->>Q: done
+    else même taille et même BLAKE3
+        B-->>K: IDENTICAL
+        K->>Q: done, rien n'est envoyé
+    else contenu différent à ce chemin
+        B-->>K: CONFLICT
+        K->>Q: conflict, jamais écrasé
+    end
+```
+
 1. `ros2 bag record` écrit `run_0.mcap` dans le dossier surveillé.
 2. Le watcher le détecte et attend qu'il soit stable et fermé, puis appelle `CollectorService._on_new_bag`.
 3. Le service construit le chemin distant `<préfixe>/<robot_id>/<AAAA-MM-JJ>/<fichier>` et ajoute une
@@ -57,21 +95,49 @@ un backend.
 
 ## États de la file
 
-```text
-  ┌──────── retry (backoff / defer) ────────┐
-  ▼                                         │
-queued ──► uploading ──► done               │
-               │                            │
-               ├──► failed ── remis en file au démarrage (retry_failed_on_start)
-               ├──► conflict   (action d'un opérateur requise)
-               └────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> queued: nouveau bag stable
+    queued --> uploading: pris par un worker
+    uploading --> done: vérifié
+    uploading --> queued: nouvel essai plus tard
+    uploading --> failed: abandon
+    uploading --> conflict: autre fichier présent
+    failed --> queued: au redémarrage
+    done --> [*]
+    conflict --> [*]: un opérateur décide
 ```
+
+- **nouvel essai plus tard** : erreur réseau temporaire, quota, ou backoff exponentiel après une erreur inconnue.
+- **abandon** : `max_retries` atteint, ou erreur d'authentification ou de configuration qu'un nouvel essai ne réglerait pas.
+- **autre fichier présent** : le chemin distant contient déjà un autre contenu. FreeFox ne l'écrase jamais.
+- **au redémarrage** : avec `retry_failed_on_start: true`, les entrées en échec repartent avec de nouveaux essais.
 
 Au démarrage, les lignes laissées en `uploading` par un crash repassent en `queued`.
 
 ## Gestion des erreurs
 
 Les backends lèvent des erreurs définies dans `freefox.backends`, et le worker les traduit ainsi :
+
+```mermaid
+flowchart LR
+    E{"Erreur d'upload"} --> C{"Conflit ?"}
+    C -->|oui| CF["conflict<br/>journalisé pour un opérateur"]
+    C -->|non| QT{"Quota ?"}
+    QT -->|oui| D1["nouvel essai après<br/>quota_retry_delay"]
+    QT -->|non| T{"Temporaire ?"}
+    T -->|oui| D2["nouvel essai après<br/>transient_retry_delay<br/><i>réseau, session expirée…</i>"]
+    T -->|non| A{"Auth ou config ?"}
+    A -->|oui| F["failed immédiatement<br/>réessayer ne servirait à rien"]
+    A -->|non| BO["backoff exponentiel<br/>puis failed après max_retries"]
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef bad fill:#E63200,stroke:#A82400,color:#ffffff
+    class CF,F bad
+```
+
 
 | Exception | Résultat |
 |---|---|

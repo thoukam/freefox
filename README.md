@@ -1,56 +1,53 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/thoukam/freefox/main/images/freefox.png" alt="FreeFox" width="380">
-</p>
-
-<h1 align="center">FreeFox</h1>
-
-<p align="center">
-  <strong>Get every ROS 2 bag off your robots, reliably.</strong><br>
-  A small Linux service that watches your recording folder and ships finished rosbags to
-  Google Drive, a NAS over rsync/SSH, or any S3-compatible bucket, with resumable uploads,
-  BLAKE3 integrity checks and a live dashboard.
+  <a href="https://github.com/thoukam/freefox">
+    <img src="https://raw.githubusercontent.com/thoukam/freefox/main/images/brand/banner.svg" alt="FreeFox: reliable rosbag offloading for ROS 2 robots" width="100%">
+  </a>
 </p>
 
 <p align="center">
   <a href="https://github.com/thoukam/freefox/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/thoukam/freefox/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/thoukam/freefox/blob/main/LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
   <a href="https://pypi.org/project/freefox/"><img alt="PyPI" src="https://img.shields.io/pypi/v/freefox.svg"></a>
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
-  <img alt="ROS 2" src="https://img.shields.io/badge/ROS%202-mcap%20%7C%20db3-22314E.svg">
+  <a href="https://thoukam.github.io/freefox/"><img alt="Docs" src="https://img.shields.io/badge/docs-thoukam.github.io-FF6B00.svg"></a>
   <a href="https://github.com/thoukam/freefox/pkgs/container/freefox"><img alt="Docker image" src="https://img.shields.io/badge/ghcr.io-thoukam%2Ffreefox-2496ED.svg?logo=docker&logoColor=white"></a>
+  <a href="https://github.com/thoukam/freefox/blob/main/LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
   <a href="https://github.com/thoukam/freefox/blob/main/CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 </p>
 
-<p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#features">Features</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="#documentation">Docs</a> ·
-  <a href="#roadmap">Roadmap</a> ·
-  <a href="https://github.com/thoukam/freefox/blob/main/CONTRIBUTING.md">Contributing</a> ·
-  <a href="https://github.com/thoukam/freefox/blob/main/README.fr.md">Français</a>
-</p>
+**FreeFox gets every ROS 2 bag off your robots, reliably.** It is a small Linux service that
+watches your recording folder and ships finished rosbags to Google Drive, a NAS over rsync/SSH or
+any S3-compatible bucket. Uploads resume after a crash, every file is verified with BLAKE3, and a
+live dashboard shows what is happening.
 
----
-
-```text
-robot ─► ros2 bag record ─► /bags ─► FreeFox ─► Google Drive │ NAS (rsync/SSH) │ AWS S3 / MinIO
-```
+> **Status: 0.2, beta.** The core (queue, resume, integrity, three backends) is implemented and
+> tested; the configuration format may still change before 1.0.
+> [Release notes](https://github.com/thoukam/freefox/blob/main/CHANGELOG.md) · [Roadmap](#roadmap) · [Français](https://github.com/thoukam/freefox/blob/main/README.fr.md)
 
 ## Why FreeFox?
 
 Field robots generate gigabytes of rosbags per run, often on flaky Wi-Fi or 4G. Copying them
 by hand gets bags lost, duplicated or corrupted, and nobody notices until the data is needed.
 
+```mermaid
+flowchart LR
+    rec["🎥 ros2 bag record"] --> bags[("📁 bags folder<br/>on the robot")]
+    bags --> ff["🦊 FreeFox<br/>watch · verify · upload"]
+    ff --> gd["☁️ Google Drive"]
+    ff --> nas["🗄️ NAS or server<br/>rsync over SSH"]
+    ff --> s3["🪣 AWS S3 / MinIO"]
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef fox fill:#FF6B00,stroke:#E63200,color:#ffffff,font-weight:bold
+    class ff fox
+```
+
 FreeFox runs on the robot and takes care of that job:
 
-- it **waits until a bag is complete** before touching it,
-- it **remembers every transfer in a local SQLite queue**, so a reboot or a crash never loses track,
-- it **resumes interrupted uploads** where they stopped instead of restarting a 20 GB file,
-- it **proves the file arrived intact** with a BLAKE3 fingerprint, and never sends the same content twice.
-
-It is free and self-hosted, with no subscription and no vendor lock-in. It works with the
-storage you already have.
+- **Complete bags only.** It waits until a recording is finished before touching it.
+- **Nothing gets lost.** Every transfer is remembered in a local SQLite queue, across crashes and reboots.
+- **Resume, don't restart.** An interrupted 20 GB upload continues where it stopped.
+- **Proof of integrity.** A BLAKE3 fingerprint shows the file arrived intact, and identical content is never sent twice.
+- **Your storage, no subscription.** Free, self-hosted, no vendor lock-in.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/thoukam/freefox/main/images/dashboard_freefox_blur.png" alt="FreeFox dashboard (blurred preview)" width="860"><br>
@@ -143,16 +140,20 @@ Backend guides:
 
 ## How it works
 
-```text
- ┌────────────┐  stable file   ┌──────────────────┐  next ready   ┌───────────────┐
- │  Watcher   │ ─────────────► │  SQLite queue    │ ────────────► │ Worker pool   │
- │ (watchdog) │                │  (durable state) │ ◄──────────── │ BLAKE3, retry │
- └────────────┘                └──────────────────┘   progress    └──────┬────────┘
-                                        ▲                                │
-                                        │ reads                          ▼
-                                 ┌──────┴──────┐            ┌──────────────────────────┐
-                                 │  Dashboard  │            │ Backend: gdrive │ rsync │ s3 │
-                                 └─────────────┘            └──────────────────────────┘
+```mermaid
+flowchart LR
+    W["👁️ Watcher<br/>waits until the bag<br/>stops growing"] -->|new bag| Q[("🗃️ SQLite queue<br/>durable state")]
+    Q -->|next bag| P["⚙️ Workers<br/>BLAKE3 · retries · resume"]
+    P -->|progress and result| Q
+    P --> GD["☁️ Google Drive"]
+    P --> RS["🗄️ rsync / NAS"]
+    P --> S3["🪣 S3 / MinIO"]
+    D["📊 Dashboard"] -. reads .-> Q
+
+    classDef default fill:#FFF3E8,stroke:#FF9A4D,color:#1A0A00
+    linkStyle default stroke:#FF8A33,stroke-width:1.6px
+    classDef core fill:#FF6B00,stroke:#E63200,color:#ffffff
+    class W,P core
 ```
 
 1. **Watcher** detects new `.mcap` / `.db3` files and waits until they stop growing.
@@ -186,7 +187,7 @@ Every guide is available in English ([`docs/en/`](https://github.com/thoukam/fre
 | **v0.3** | Observability and security: Prometheus `/metrics`, dashboard authentication, structured logs | 🚧 Next |
 | **v0.4** | Smarter uploads: rules by ROS 2 topic or bag metadata, bandwidth limits, upload time windows (Wi-Fi only, at night…) | 📋 Planned |
 | **v0.5** | More backends: Azure Blob, Google Cloud Storage, WebDAV | 📋 Planned |
-| **v1.0** | Fleet scale: central multi-robot view, PyPI release, native `ros2` package, stable config format | 🔭 Vision |
+| **v1.0** | Fleet scale: central multi-robot view, native `ros2` package, stable config format | 🔭 Vision |
 
 Shipped changes are detailed in the [CHANGELOG](https://github.com/thoukam/freefox/blob/main/CHANGELOG.md). Have a need from your lab or company?
 [Open an issue](https://github.com/thoukam/freefox/issues). Real use cases shape the priorities.

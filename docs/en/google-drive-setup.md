@@ -56,12 +56,11 @@ The `secrets/` folder is ignored by git.
 1. Open Google Drive and create a folder, for example `freefox-test`.
 2. Open the folder and copy its ID from the URL.
 
-```text
-https://drive.google.com/drive/folders/1AbCDefGhIJklMNopQRstuVwxyz?usp=drive_link
-                                       └──────── folder ID ───────────┘
-```
+For example, in this URL:
 
-Copy only the ID, without `?usp=drive_link`.
+`https://drive.google.com/drive/folders/`**`1AbCDefGhIJklMNopQRstuVwxyz`**`?usp=drive_link`
+
+the folder ID is **`1AbCDefGhIJklMNopQRstuVwxyz`**: the part after `folders/`, without `?usp=drive_link`.
 
 ### 5. Configure FreeFox
 
