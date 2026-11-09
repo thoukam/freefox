@@ -8,9 +8,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-## [0.2.1] - 2026-11-09
+## [0.2.2] - 2026-11-09
 
 First release published on PyPI: `pip install freefox`.
+
+### Fixed
+- Package metadata: replaced an invalid PyPI classifier that blocked the upload of 0.2.1.
+  The CI now validates `pyproject.toml` on every pull request.
+
+## [0.2.1] - 2026-11-09
+
+Not published on PyPI because of an invalid classifier; use 0.2.2. The Docker image
+`ghcr.io/thoukam/freefox:0.2.1` is available.
 
 ### Added
 - Published on PyPI, with the `freefox-dashboard` and `freefox-status` commands.
@@ -52,7 +61,8 @@ First release published on PyPI: `pip install freefox`.
 - Docker image (`linux/amd64`, `linux/arm64`) published to GHCR, with Docker Compose files.
 - GitHub Pages project site.
 
-[Unreleased]: https://github.com/thoukam/freefox/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/thoukam/freefox/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/thoukam/freefox/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/thoukam/freefox/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/thoukam/freefox/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thoukam/freefox/commits/v0.2.0

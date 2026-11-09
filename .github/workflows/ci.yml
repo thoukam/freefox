@@ -30,6 +30,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,s3]"
 
+      - name: Validate package metadata (pyproject, PyPI classifiers)
+        run: |
+          pip install "validate-pyproject[all]"
+          validate-pyproject pyproject.toml
+
       - name: Lint and format check
         run: |
           ruff check freefox scripts tests
