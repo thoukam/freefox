@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeFox · Récupération fiable des rosbags pour robots ROS 2</title>
+  <meta name="description" content="FreeFox surveille le dossier d'enregistrement de vos robots et envoie les bags ROS 2 terminés vers Google Drive, un NAS via rsync/SSH ou S3/MinIO, avec reprise des uploads, contrôle d'intégrité BLAKE3 et dashboard en direct. Libre et auto-hébergé.">
+  <link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="en" href="https://thoukam.github.io/freefox/">
+  <link rel="alternate" hreflang="fr" href="https://thoukam.github.io/freefox/fr/">
+  <meta property="og:title" content="FreeFox · Récupération fiable des rosbags pour robots ROS 2">
+  <meta property="og:description" content="Service libre et auto-hébergé qui récupère chaque bag ROS 2 de vos robots : reprise des uploads, intégrité BLAKE3, Google Drive, rsync/NAS et S3/MinIO.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/thoukam/freefox/main/images/dashboard_freefox_blur.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Sans:wght@400;500;600;700;800&family=Ubuntu+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script type="module" src="../assets/site.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Accueil FreeFox"><img src="../assets/icon.svg" alt=""><span>Free<b>Fox</b></span></a>
+    <nav class="nav" aria-label="Navigation principale">
+      <a class="hide-sm" href="#fonctionnalites">Fonctionnalités</a>
+      <a class="hide-sm" href="#fonctionnement">Fonctionnement</a>
+      <a href="#installation">Installation</a>
+      <a class="hide-sm" href="#docs">Docs</a>
+      <a class="gh" href="https://github.com/thoukam/freefox">GitHub</a>
+      <a class="lang" href="../" hreflang="en" lang="en">EN</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">ROS 2 · MCAP · db3 · open source</span>
+        <h1>Récupérez chaque rosbag <span>de vos robots</span>, sans en perdre un.</h1>
+        <p class="lead">FreeFox surveille votre dossier d'enregistrement et envoie les bags terminés vers
+          Google Drive, un NAS via rsync/SSH ou tout bucket compatible S3. Les uploads reprennent après
+          un crash, chaque fichier est vérifié avec BLAKE3, et un dashboard en direct montre ce qui se passe.</p>
+        <div class="install">
+          <code id="pip-cmd">pip install "freefox[s3]"</code>
+          <button class="copy" type="button" data-copy="#pip-cmd" data-done="Copié">Copier</button>
+        </div>
+        <div class="btn-row">
+          <a class="btn primary" href="#installation">Commencer</a>
+          <a class="btn" href="https://github.com/thoukam/freefox">★ GitHub</a>
+          <a class="btn" href="https://pypi.org/project/freefox/">PyPI</a>
+        </div>
+      </div>
+      <div class="hero-logo"><img src="../assets/icon.svg" alt="Logo FreeFox : un renard orange géométrique"></div>
+    </div>
+  </div>
+
+  <section id="pourquoi">
+    <div class="wrap">
+      <h2>Pourquoi FreeFox ?</h2>
+      <p class="sub">Un robot de terrain enregistre des gigaoctets de rosbags à chaque mission, souvent sur un
+        Wi-Fi ou une 4G instable. Copiés à la main, des bags se perdent, se dupliquent ou se corrompent, et on
+        ne s'en rend compte qu'au moment d'exploiter les données.</p>
+      <div class="grid c4">
+        <div class="card"><span class="ic">⏳</span><h3>Uniquement des bags complets</h3>
+          <p>Un fichier n'entre en file que lorsqu'il ne grossit plus et qu'aucun processus ne le tient ouvert.</p></div>
+        <div class="card"><span class="ic">🗃️</span><h3>Rien ne se perd</h3>
+          <p>Chaque transfert est gardé dans une file SQLite locale, malgré les crashs et redémarrages.</p></div>
+        <div class="card"><span class="ic">⏯️</span><h3>Reprendre, pas recommencer</h3>
+          <p>Un upload de 20&nbsp;Go interrompu repart là où il s'est arrêté, sur chaque backend.</p></div>
+        <div class="card"><span class="ic">🔏</span><h3>Preuve d'intégrité</h3>
+          <p>Une empreinte BLAKE3 est stockée côté distant et vérifiée. Un même contenu n'est jamais envoyé deux fois.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="fonctionnement">
+    <div class="wrap">
+      <h2>Fonctionnement</h2>
+      <p class="sub">FreeFox tourne à côté de votre stack ROS 2. Il ne touche pas à ROS lui-même : il surveille un dossier.</p>
+      <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    bags[("📁 dossier des bags&lt;br/&gt;ros2 bag record")] --> W["👁️ Watcher&lt;br/&gt;attend que le bag&lt;br/&gt;soit complet"]
+    W --> Q[("🗃️ File SQLite&lt;br/&gt;état durable")]
+    Q --> P["⚙️ Workers&lt;br/&gt;BLAKE3 · retries&lt;br/&gt;reprise"]
+    P --> GD["☁️ Google Drive"]
+    P --> RS["🗄️ NAS / serveur"]
+    P --> S3["🪣 S3 / MinIO"]
+    D["📊 Dashboard"] -.-> Q
+
+    classDef core fill:#FF6B00,stroke:#E63200,color:#ffffff
+    class W,P core
+</pre>
+      </div>
+      <ol class="steps">
+        <li><span><b>Surveiller.</b> Les nouveaux fichiers <code>.mcap</code> et <code>.db3</code> sont détectés ; FreeFox attend qu'ils ne grossissent plus.</span></li>
+        <li><span><b>Mettre en file.</b> Le transfert est enregistré avec un instantané de sa destination : il survit aux redémarrages.</span></li>
+        <li><span><b>Envoyer.</b> Les workers calculent le BLAKE3, ignorent ce qui existe déjà, envoient avec reprise et réessaient avec backoff.</span></li>
+        <li><span><b>Ne jamais écraser.</b> Un fichier différent déjà présent au même chemin devient un <em>conflit</em>, qu'un opérateur tranchera.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="fonctionnalites">
+    <div class="wrap">
+      <h2>Fonctionnalités</h2>
+      <p class="sub">Tout ce qu'une équipe robotique attend pour collecter ses données terrain, avec le stockage qu'elle a déjà.</p>
+      <div class="grid c3">
+        <div class="card"><span class="ic">☁️</span><h3>Trois backends</h3>
+          <p>Google Drive (OAuth2 ou Shared Drive), rsync vers un disque, un NAS ou un serveur SSH, et AWS S3 ou MinIO.</p></div>
+        <div class="card"><span class="ic">🔁</span><h3>Retries intelligents</h3>
+          <p>Backoff exponentiel, délais dédiés aux erreurs de quota et réseau, échecs remis en file au démarrage.</p></div>
+        <div class="card"><span class="ic">📊</span><h3>Dashboard en direct</h3>
+          <p>Progression par bag, débit en MiB/s et Mbps, ETA, retries, erreurs et fichiers surveillés.</p></div>
+        <div class="card"><span class="ic">🗂️</span><h3>Arborescence propre</h3>
+          <p>Les fichiers arrivent sous <code>robot_id/AAAA-MM-JJ/</code>, prêts pour toute une flotte.</p></div>
+        <div class="card"><span class="ic">🔐</span><h3>Sécurisé par défaut</h3>
+          <p>Clés S3 refusées dans le YAML, secrets masqués dans les logs, unité systemd durcie.</p></div>
+        <div class="card"><span class="ic">🐳</span><h3>Tourne partout</h3>
+          <p>pip, systemd ou Docker. Image multi-architecture amd64 et arm64 (Jetson, Raspberry Pi).</p></div>
+      </div>
+      <p style="margin-top:36px"><img class="shot" src="https://raw.githubusercontent.com/thoukam/freefox/main/images/dashboard_freefox_blur.png" alt="Dashboard FreeFox avec des uploads en cours (aperçu flouté)" width="980" loading="lazy"></p>
+      <p class="caption">Le dashboard local (aperçu flouté).</p>
+    </div>
+  </section>
+
+  <section id="installation">
+    <div class="wrap">
+      <h2>Installation</h2>
+      <p class="sub">Choisissez la méthode adaptée à votre robot. Toutes utilisent le même fichier de configuration.</p>
+      <div class="install-cards">
+        <div class="card">
+          <div><h3>pip</h3><p>Le plus rapide pour essayer, ou sur un robot qui a déjà Python.</p></div>
+<pre>pip install "freefox[s3]"
+freefox --config config.yaml
+freefox-dashboard --config config.yaml --host 0.0.0.0</pre>
+        </div>
+        <div class="card">
+          <div><h3>Docker</h3><p>Le service et le dashboard dans deux conteneurs, amd64 et arm64.</p></div>
+<pre>git clone https://github.com/thoukam/freefox && cd freefox
+cp .env.example .env
+cp config/config.docker.example.yaml config/config.docker.yaml
+docker compose up -d</pre>
+        </div>
+        <div class="card">
+          <div><h3>systemd</h3><p>Démarre au boot, redémarre en cas d'erreur, unité durcie.</p></div>
+<pre>git clone https://github.com/thoukam/freefox && cd freefox
+sudo ./install.sh && sudo nano /etc/freefox/config.yaml
+sudo systemctl enable --now freefox</pre>
+        </div>
+      </div>
+      <h3 style="margin-top:40px">Configuration minimale</h3>
+<pre><span class="k">robot_id</span>: robot-01            <span class="c"># par défaut : le hostname</span>
+<span class="k">watch</span>:
+  <span class="k">directory</span>: /home/ros/bags
+<span class="k">storage</span>:
+  <span class="k">backend</span>: rsync              <span class="c"># gdrive | rsync | s3</span>
+<span class="k">rsync</span>:
+  <span class="k">destination</span>: user@nas:/data/freefox</pre>
+      <p style="margin-top:14px">Toutes les options sont documentées dans
+        <a href="https://github.com/thoukam/freefox/blob/main/config/config.example.yaml">config.example.yaml</a>.</p>
+    </div>
+  </section>
+
+  <section id="docs">
+    <div class="wrap">
+      <h2>Documentation</h2>
+      <p class="sub">Les guides existent en français et en <a href="../#docs">anglais</a>.</p>
+      <div class="grid c3">
+        <a class="card" href="https://github.com/thoukam/freefox/blob/main/docs/fr/installation.md"><h3>Installation →</h3><p>Installation locale, service systemd, tests avec de vrais bags, reprise des uploads.</p></a>
+        <a class="card" href="https://github.com/thoukam/freefox/blob/main/docs/fr/google-drive-setup.md"><h3>Google Drive →</h3><p>OAuth2 pour un Drive personnel, compte de service et Shared Drive pour une flotte.</p></a>
+        <a class="card" href="https://github.com/thoukam/freefox/blob/main/docs/fr/s3-storage.md"><h3>S3 / MinIO →</h3><p>Chaîne de credentials, CA privé, uploads multipart durables.</p></a>
+        <a class="card" href="https://github.com/thoukam/freefox/blob/main/docs/fr/docker-deployment.md"><h3>Docker et rsync →</h3><p>Déploiement Compose, image GHCR, rsync via SSH depuis un robot.</p></a>
+        <a class="card" href="https://github.com/thoukam/freefox/blob/main/docs/fr/architecture.md"><h3>Architecture →</h3><p>Composants, cycle de vie d'un bag, états de la file, politique d'erreurs, contrat des backends.</p></a>
+        <a class="card" href="https://github.com/thoukam/freefox/blob/main/CHANGELOG.fr.md"><h3>Journal des modifications →</h3><p>Ce qui a changé à chaque version.</p></a>
+      </div>
+    </div>
+  </section>
+
+  <section id="feuille-de-route">
+    <div class="wrap">
+      <h2>Feuille de route</h2>
+      <p class="sub">Les cas d'usage réels guident les priorités. <a href="https://github.com/thoukam/freefox/issues">Dites-nous ce dont vous avez besoin.</a></p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Phase</th><th>Objectif</th><th>Statut</th></tr></thead>
+          <tbody>
+            <tr><td>v0.1</td><td>Watcher, file durable, Google Drive, rsync / NAS, BLAKE3, dashboard, Docker</td><td><span class="tag done">Livré</span></td></tr>
+            <tr><td>v0.2</td><td>S3 / MinIO avec multipart durable, détection de conflits, paquet PyPI</td><td><span class="tag done">Livré</span></td></tr>
+            <tr><td>v0.3</td><td>Observabilité et sécurité : Prometheus <code>/metrics</code>, authentification du dashboard, logs structurés</td><td><span class="tag next">Prochaine étape</span></td></tr>
+            <tr><td>v0.4</td><td>Uploads intelligents : règles par topic ROS 2 ou métadonnées du bag, limite de débit, fenêtres horaires</td><td><span class="tag plan">Planifié</span></td></tr>
+            <tr><td>v0.5</td><td>Nouveaux backends : Azure Blob, Google Cloud Storage, WebDAV</td><td><span class="tag plan">Planifié</span></td></tr>
+            <tr><td>v1.0</td><td>Échelle flotte : vue multi-robots centralisée, paquet <code>ros2</code> natif, format de config stable</td><td><span class="tag plan">Vision</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="contribuer">
+    <div class="wrap">
+      <div class="cta">
+        <h2>Développé en open source</h2>
+        <p class="sub" style="margin:0 auto">Rapports de bugs, documentation, traductions, nouveaux backends, retours terrain sur de vrais
+          robots : toutes les contributions sont bienvenues, en français ou en anglais.</p>
+        <div class="btn-row">
+          <a class="btn primary" href="https://github.com/thoukam/freefox/labels/good%20first%20issue">Premières issues</a>
+          <a class="btn" href="https://github.com/thoukam/freefox/blob/main/CONTRIBUTING.fr.md">Guide de contribution</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>FreeFox · <a href="https://github.com/thoukam/freefox/blob/main/LICENSE">Apache 2.0</a> · créé par Yves Thoukam</span>
+    <span><a href="https://github.com/thoukam/freefox">GitHub</a> · <a href="https://pypi.org/project/freefox/">PyPI</a> · <a href="https://github.com/thoukam/freefox/pkgs/container/freefox">Docker</a> · <a href="../" hreflang="en" lang="en">English</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

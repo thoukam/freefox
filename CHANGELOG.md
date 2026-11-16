@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- New project website at https://thoukam.github.io/freefox/, in English and French (`/fr/`), with the
+  new logo, `pip install` instructions and Mermaid diagrams.
+
 ## [0.2.2] - 2026-11-09
 
 First release published on PyPI: `pip install freefox`.
